@@ -31,6 +31,16 @@ class TestGoEnv(unittest.TestCase):
         self.assertEqual(next_state[0][0, 0], 1)
         self.assertEqual(next_state[1][0, 0], 0)
 
+    def test_white_moves_first(self):
+        """
+        Make a move at 0,0 and assert that a black piece was placed
+        :return:
+        """
+        self.env.reset(black_first=False)
+        next_state, reward, done, info = self.env.step((0,0))
+        self.assertEqual(next_state[1][0, 0], 1)
+        self.assertEqual(next_state[0][0, 0], 0)
+
     def test_simple_valid_moves(self):
         """
         1,2,3,4,5,6,7,
