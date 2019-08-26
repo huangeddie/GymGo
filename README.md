@@ -1,3 +1,6 @@
+# About
+An environment for the board game Go. It is implemented using OpenAI's Gym API.
+
 # Installation
 ```
 pip install -e gym-go
@@ -11,7 +14,7 @@ go_env = gym.make('gym_go:go-v0', size=7, reward_method='real')
 
 first_action = (2,5)
 second_action = (5,2)
-first_state, reward, done, info = go_env.step(first_action)
+state, reward, done, info = go_env.step(first_action)
 go_env.render()
 ```
 
@@ -37,7 +40,7 @@ go_env.render()
 ```
 
 ```python
-second_state, reward, done, info = go_env.step(second_action)
+state, reward, done, info = go_env.step(second_action)
 go_env.render()
 ```
 
@@ -74,3 +77,12 @@ A game ends when both players pass consecutively
   * `0` - Game is ongoing, white won, or game is tied
   * `1` - Black won
 * **Heuristic**: `black area - white area`
+
+# State
+The `state` object that is returned by the `reset` and `step` functions of the environment is a `4 x BOARD_SIZE x BOARD_SIZE` numpy array. 
+* The first and second dimensions are a `0,1` arrays representing black's pieces and white's pieces respectively. 
+* The third dimension is a `0,1` array representing the invalid moves (including ko-protection) for the next action. `0` at a location means you _can_ move there, while `1` at a location means you cannot.
+* The fourth dimension is either all `0`'s or all `1`'s indicating whether or not the previous move was a pass
+
+# Action
+The `step` function expects either a tuple/list of 2 integers representing the row and column of the next action, or `None` for passing
