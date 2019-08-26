@@ -73,8 +73,10 @@ The _winner_ is the player with the larger area (a game is tied if both players 
 A game ends when both players pass consecutively
 
 # Reward Methods
+Reward methods are in _black_'s perspective
 * **Real**: 
-  * `0` - Game is ongoing, white won, or game is tied
+  * `-1` - White won
+  * `0` - Game is ongoing, or game is tied
   * `1` - Black won
 * **Heuristic**: `black area - white area`
 

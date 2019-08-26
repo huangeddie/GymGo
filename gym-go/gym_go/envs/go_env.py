@@ -29,7 +29,7 @@ class Group:
 class GoEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, size, reward_method='heuristic', black_first=True, state_ref=None):
+    def __init__(self, size, reward_method='real', black_first=True, state_ref=None):
         '''
         @param reward_method: either 'heuristic' or 'real' 
         heuristic: gives # black pieces - # white pieces. 
