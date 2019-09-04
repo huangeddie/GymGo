@@ -203,6 +203,8 @@ class GoEnv(gym.Env):
                 return 0
 
         elif self.reward_method == RewardMethod.HEURISTIC:
+            if self.done:
+                return (1 if area_difference > 0 else -1) * self.board_size**2
             return area_difference
         else:
             raise Exception("Unknown Reward Method")
