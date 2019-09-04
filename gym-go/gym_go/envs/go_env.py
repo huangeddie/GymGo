@@ -4,6 +4,7 @@ from gym.utils import seeding
 from itertools import product
 import numpy as np
 from enum import Enum
+from copy import deepcopy
 
 class RewardMethod(Enum):
     REAL = 'real'
@@ -27,7 +28,7 @@ class Group:
         self.liberties = set()
 
 class GoEnv(gym.Env):
-    metadata = {'render.modes': ['human']}
+    metadata = {'render.modes': ['terminal']}
 
     def __init__(self, size, reward_method='real', black_first=True, state_ref=None):
         '''
@@ -62,7 +63,7 @@ class GoEnv(gym.Env):
         self.done = False
 
         return np.copy(self.state)
-        
+
     def step(self, action):
         ''' 
         Assumes the correct player is making a move. Black goes first.
@@ -115,29 +116,29 @@ class GoEnv(gym.Env):
         # Disable ko-proection
         self.ko_protect = None
         
-        killed_some_opponent_pieces = False
-        
         # Go through opponent groups
-        killed_single_piece = False
+        killed_single_piece = None
         empty_adjacents_before_kill = self.get_adjacent_locations(action)
         for group in opponent_groups:
             empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
             if len(group.liberties) <= 1:
                 assert action in group.liberties
-                killed_some_opponent_pieces = True
-                
+
                 # Remove group in board
                 for loc in group.locations:
                     self.state[self.turn.other.value][loc] = 0
                     
                 # Metric for ko-protection
                 if len(group.locations) <= 1:
-                    killed_single_piece = True
+                    if killed_single_piece is not None:
+                        killed_single_piece = None
+                    else:
+                        killed_single_piece = group.locations.pop()
                 
         # If group was one piece, and location is surrounded by opponents, 
         # activate ko protection
-        if killed_single_piece and len(empty_adjacents_before_kill) <= 0:
-            self.ko_protect = group.locations.pop()
+        if killed_single_piece is not None and len(empty_adjacents_before_kill) <= 0:
+            self.ko_protect = killed_single_piece
                     
         # Add the piece!
         self.state[self.turn.value][action] = 1

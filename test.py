@@ -235,6 +235,49 @@ class TestGoEnv(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[2] == 1), 8)
         self.assertEqual(state[2][1, 2], 0)
 
+
+    def test_invalid_ko_wall_protection_moves(self):
+        """
+      2/8,   7,   6,   _,   _,   _,   _,
+
+        1,   4,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        :return:
+        """
+
+        for move in [(1,0),(0,0),None,(1,1),None,(0,2),(0,1)]:
+            state, reward, done, info = self.env.step(move)
+
+        # Test invalid channel
+        self.assertEqual(np.count_nonzero(state[2]), 5, state[2])
+        self.assertEqual(np.count_nonzero(state[2] == 1), 5)
+        self.assertEqual(state[2][0, 0], 1)
+
+        # Assert pieces channel is empty at ko-protection coordinate
+        self.assertEqual(state[0][0, 0], 0)
+        self.assertEqual(state[1][0, 0], 0)
+
+        final_move = (0,0)
+        with self.assertRaises(Exception):
+            self.env.step(final_move)
+
+        # Assert ko-protection goes off
+        state, reward, done, info = self.env.step((6,6))
+        state, reward, done, info = self.env.step(None)
+        self.assertEqual(np.count_nonzero(state[2]), 5)
+        self.assertEqual(np.count_nonzero(state[2] == 1), 5)
+        self.assertEqual(state[2][0, 0], 0)
+
     def test_invalid_no_liberty_move(self):
         """
         _,   1,   2,   _,   _,   _,   _,
