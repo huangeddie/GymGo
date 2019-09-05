@@ -1,10 +1,8 @@
 import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
 from itertools import product
 import numpy as np
 from enum import Enum
-from copy import deepcopy
+from functools import reduce
 
 class RewardMethod(Enum):
     REAL = 'real'
@@ -40,7 +38,10 @@ class GoEnv(gym.Env):
         # determine board size
         # A numpy array representing the state of the game
         # Shape [4, SIZE, SIZE]
-        # 0 - black, 1 - white, 2 - invalid moves, 3 - previous move was passed
+        # 0 - black
+        # 1 - white
+        # 2 - invalid moves (including ko-protection)
+        # 3 - 0/1 means previous player didn't or did pass, -1 means game over
         self.board_size = size
         self.reward_method = RewardMethod(reward_method)
             
@@ -51,18 +52,44 @@ class GoEnv(gym.Env):
             self.state = state_ref
         self.reset(black_first)
         
-    def reset(self, black_first=True):
+    def reset(self, black_first=True, state=None):
         '''
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state.fill(0)
+        if state is None:
+            self.state.fill(0)
+        else:
+            self.state = np.copy(state)
+
+        assert self.state[0].shape[0] == self.state[0].shape[1]
+
+        self.board_size = self.state[0].shape[0]
         self.turn = Turn.BLACK if black_first else Turn.WHITE
-        self.prev_player_passed = False
+
+        assert reduce(lambda result, i: result or (np.count_nonzero(self.state[3] == i) == self.board_size**2, True),
+                      [0,1,-1]), self.state[3]
+
         self.ko_protect = None
-        self.done = False
 
         return np.copy(self.state)
+
+    @property
+    def prev_player_passed(self):
+        return np.count_nonzero(self.state[3] == 1) == self.board_size**2
+
+    def set_prev_player_passed(self, passed):
+        self.state[3] = 1 if (passed == True or passed == 1) else 0
+
+    @property
+    def game_over(self):
+        return np.count_nonzero(self.state[3] == -1) == self.board_size**2
+
+    def set_game_over(self):
+        self.state[3] = -1
+
+    def reset_invalid_moves(self):
+        self.state[2] = 0
 
     def step(self, action):
         ''' 
@@ -70,30 +97,23 @@ class GoEnv(gym.Env):
         return observation, reward, done, info 
         '''
         def _state_reward_done_info():
-            return np.copy(self.state), self.get_reward(), self.done, self.get_info()
+            return np.copy(self.state), self.get_reward(), self.game_over, self.get_info()
         
         # check if game is already over
-        if self.done:
+        if self.game_over:
             raise Exception('Attempt to step at {} after game is over'.format(action))
-            
+
         # if the current player passes
         if action is None:         
             # if two consecutive passes, game is over
             if self.prev_player_passed:
-                self.done = True
-                
-            self.prev_player_passed = True
-                
-            # Set passing layer
-            self.state[3] = 1
-            
-            # ko-protection is gone
-            if self.ko_protect is not None:
-                self.state[2][self.ko_protect] = 0
-                self.ko_protect = None
-                
+                self.set_game_over()
+            else:
+                self.set_prev_player_passed(True)
+
             # Update invalid channel
-            self.update_invalid_channel()
+            self.reset_invalid_moves()
+            self.add_invalid_moves()
                 
             # Switch turn
             self.turn = self.turn.other
@@ -109,13 +129,12 @@ class GoEnv(gym.Env):
             raise Exception("Not Within bounds")
         elif self.state[2][action] > 0:
             raise Exception("Invalid Move")
-        
+
+        self.reset_invalid_moves()
+
         # Get all adjacent groups
         _, opponent_groups = self.get_adjacent_groups(action)
-        
-        # Disable ko-proection
-        self.ko_protect = None
-        
+
         # Go through opponent groups
         killed_single_piece = None
         empty_adjacents_before_kill = self.get_adjacent_locations(action)
@@ -138,19 +157,17 @@ class GoEnv(gym.Env):
         # If group was one piece, and location is surrounded by opponents, 
         # activate ko protection
         if killed_single_piece is not None and len(empty_adjacents_before_kill) <= 0:
-            self.ko_protect = killed_single_piece
-                    
+            self.state[2][killed_single_piece] = 1
+
         # Add the piece!
         self.state[self.turn.value][action] = 1
 
         # Update illegal moves
-        self.update_invalid_channel()
+        self.add_invalid_moves()
 
         # This move was not a pass
-        self.prev_player_passed = False
-        # Update passing layer
-        self.state[3] = 0
-        
+        self.set_prev_player_passed(False)
+
         # Switch turn
         self.turn = self.turn.other
 
@@ -172,7 +189,6 @@ class GoEnv(gym.Env):
             }
         }
 
-
     def get_state(self):
         """
         Returns deep copy of state
@@ -192,7 +208,7 @@ class GoEnv(gym.Env):
         area_difference = black_area - white_area
         
         if self.reward_method == RewardMethod.REAL:
-            if self.done:
+            if self.game_over:
                 if area_difference == 0:
                     return 0
                 elif area_difference > 0:
@@ -203,14 +219,15 @@ class GoEnv(gym.Env):
                 return 0
 
         elif self.reward_method == RewardMethod.HEURISTIC:
-            if self.done:
+            if self.game_over:
                 return (1 if area_difference > 0 else -1) * self.board_size**2
             return area_difference
         else:
             raise Exception("Unknown Reward Method")
             
-    def update_invalid_channel(self):
+    def add_invalid_moves(self):
         """
+        Assumes ko-protection is taken care of previously
         Updates invalid moves in the OPPONENT's perspective
         1.) Opponent cannot move at a location
             i.) If it's occupied
@@ -223,14 +240,14 @@ class GoEnv(gym.Env):
             ii.) If it's surrounded by our pieces and all of those corresponding groups
                 move more than one liberty
         """
-        self.state[2] = np.sum(self.state[[0,1]], axis=0) # Occupied
-        if self.ko_protect is not None:
-            self.state[2][self.ko_protect] = 1
+        self.state[2] = np.sum(self.state[[0,1,2]], axis=0) # Occupied/ko-protection
+
         for i, j in product(range(self.board_size), range(self.board_size)):
             if self.state[2][i,j] >= 1: # Occupied/ko invalidness already taken care of
                 continue
                 
             our_groups, opponent_groups = self.get_adjacent_groups((i, j))
+
             # Check whether we can kill
             can_kill = False
             for group in our_groups:
@@ -468,13 +485,10 @@ class GoEnv(gym.Env):
             board_str += '----' * self.board_size + '-'
             board_str += '\n'
         info = self.get_info()
-        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format(self.turn.name, self.prev_player_passed, self.done)
+        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format(self.turn.name, self.prev_player_passed, self.game_over)
         board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'], self.get_reward())
 
         print(board_str)
-
-    def close(self):
-        pass
 
     def print_state(self):
         print("Turn: {}".format(self.curr_player))
