@@ -126,7 +126,7 @@ class GoEnv(gym.Env):
         
         # Check move is valid
         if not self.is_within_bounds(action):
-            raise Exception("Not Within bounds")
+            raise Exception("{} Not Within bounds".format(action))
         elif self.state[2][action] > 0:
             raise Exception("Invalid Move")
 
@@ -195,6 +195,18 @@ class GoEnv(gym.Env):
         """
         return np.copy(self.state)
 
+    def get_winner(self):
+        black_area, white_area = self.get_areas()
+        area_difference = black_area - white_area
+
+        if self.game_over:
+            if area_difference >= 0:
+                return 1
+            else:
+                return -1
+        else:
+            return 0
+
     def get_reward(self):
         '''
         Return reward based on reward_method.
@@ -208,15 +220,7 @@ class GoEnv(gym.Env):
         area_difference = black_area - white_area
         
         if self.reward_method == RewardMethod.REAL:
-            if self.game_over:
-                if area_difference == 0:
-                    return 0
-                elif area_difference > 0:
-                    return 1
-                else:
-                    return -1
-            else: 
-                return 0
+            return self.get_winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
             if self.game_over:
@@ -458,8 +462,8 @@ class GoEnv(gym.Env):
         result.append(None)
 
         return result
-    
-    def render(self, mode='terminal'):
+
+    def __str__(self):
         board_str = ' '
 
         for i in range(self.board_size):
@@ -470,11 +474,11 @@ class GoEnv(gym.Env):
         for i in range(self.board_size):
             board_str += '{} |'.format(i)
             for j in range(self.board_size):
-                if self.state[0][i,j] == 1:
+                if self.state[0][i, j] == 1:
                     board_str += ' B'
-                elif self.state[1][i,j] == 1:
+                elif self.state[1][i, j] == 1:
                     board_str += ' W'
-                elif self.state[2][i,j] == 1:
+                elif self.state[2][i, j] == 1:
                     board_str += ' .'
                 else:
                     board_str += '  '
@@ -485,13 +489,17 @@ class GoEnv(gym.Env):
             board_str += '----' * self.board_size + '-'
             board_str += '\n'
         info = self.get_info()
-        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format(self.turn.name, self.prev_player_passed, self.game_over)
-        board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'], self.get_reward())
+        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format(self.turn.name, self.prev_player_passed,
+                                                                                self.game_over)
+        board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'],
+                                                                             self.get_reward())
+        return board_str
 
-        print(board_str)
+    def render(self, mode='terminal'):
+        print(self.__str__())
 
     def print_state(self):
-        print("Turn: {}".format(self.curr_player))
+        print("Turn: {}".format(self.turn))
         print("Your pieces (black):")
         print(self.state[0])
         print("Opponent's pieces (white):")
