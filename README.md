@@ -66,8 +66,9 @@ go_env.render()
 ```
 
 # Scoring
-We use simple area scoring to determine the winner. A player's _area_ is defined as the number of empty points a player's pieces surround plus the number of player's pieces on the board. 
-The _winner_ is the player with the larger area (a game is tied if both players have an equal amount of area on the board).
+We use simple area scoring to determine the winner. A player's _area_ is defined as the number of empty points a 
+player's pieces surround plus the number of player's pieces on the board. The _winner_ is the player with the larger 
+area (a game is tied if both players have an equal amount of area on the board).
 
 # Game Ending
 A game ends when both players pass consecutively
@@ -78,13 +79,19 @@ Reward methods are in _black_'s perspective
   * `-1` - White won
   * `0` - Game is ongoing, or game is tied
   * `1` - Black won
-* **Heuristic**: `black area - white area`
+* **Heuristic**: If the game is ongoing, the reward is `black area - white area`. 
+If black won, the reward is `BOARD_SIZE**2`. 
+If white won or tied, the reward is `-BOARD_SIZE**2`.
 
 # State
-The `state` object that is returned by the `reset` and `step` functions of the environment is a `4 x BOARD_SIZE x BOARD_SIZE` numpy array. 
-* The first and second dimensions are a `0,1` arrays representing black's pieces and white's pieces respectively. 
-* The third dimension is a `0,1` array representing the invalid moves (including ko-protection) for the next action. `0` at a location means you _can_ move there, while `1` at a location means you cannot.
-* The fourth dimension is either all `0`'s or all `1`'s indicating whether or not the previous move was a pass
+The `state` object that is returned by the `reset` and `step` functions of the environment is a 
+`6 x BOARD_SIZE x BOARD_SIZE` numpy array. All values in the array are either `0` or `1` 
+* **First and second channel:** represent the black and white pieces respectively.
+* **Third channel:** Indicator layer for whose turn it is 
+* **Fourth channel:** Invalid moves (including ko-protection) for the next action
+* **Fifth channel:** Indicator layer for whether the previous move was a pass
+* **Sixth channel:** Indicator layer for whether the game is over
 
 # Action
-The `step` function expects either a tuple/list of 2 integers representing the row and column of the next action, or `None` for passing
+The `step` function expects either a tuple/list of 2 integers representing the row and column of the next action, or 
+`None` for passing
