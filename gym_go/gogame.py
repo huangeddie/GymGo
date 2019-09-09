@@ -184,7 +184,11 @@ def get_canonical_form(state, player):
         return state
     else:
         assert player == 1
-        return state[[1, 0, 2, 3]]
+        num_channels = state.shape[0]
+        channels = np.arange(num_channels)
+        channels[0] = 1
+        channels[1] = 0
+        return state[channels]
 
 
 def get_symmetries(state, pi):
