@@ -143,7 +143,7 @@ def get_turn(state):
 
 def get_valid_moves(state):
     # return a fixed size binary vector
-    return np.append(1 - state[2].flatten(), 1)
+    return np.append(1 - state[INVD_CHNL].flatten(), 1)
 
 
 def get_areas(state):
@@ -180,14 +180,14 @@ def get_areas(state):
 
 def get_canonical_form(state, player):
     # return state if player==1, else return -state if player==-1
-    if player == 0:
+    if player == BLACK:
         return state
     else:
-        assert player == 1
+        assert player == WHITE
         num_channels = state.shape[0]
         channels = np.arange(num_channels)
-        channels[0] = 1
-        channels[1] = 0
+        channels[BLACK] = WHITE
+        channels[WHITE] = BLACK
         return state[channels]
 
 
