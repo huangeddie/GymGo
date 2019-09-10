@@ -1,8 +1,7 @@
 import gym
-from itertools import product
 import numpy as np
 from enum import Enum
-from gym_go import gogame
+from gym_go.gogame import GoGame
 from gym_go.govars import BLACK, WHITE
 
 
@@ -17,6 +16,7 @@ class RewardMethod(Enum):
 
 class GoEnv(gym.Env):
     metadata = {'render.modes': ['terminal']}
+    gogame = GoGame()
 
     def __init__(self, size, reward_method='real', black_first=True):
         '''
@@ -26,7 +26,7 @@ class GoEnv(gym.Env):
             0 for draw, all from black player's perspective
         '''
         self.size = size
-        self.state = gogame.get_init_board(size, black_first)
+        self.state = GoEnv.gogame.get_init_board(size, black_first)
         self.reward_method = RewardMethod(reward_method)
 
     def reset(self, black_first=True):
@@ -34,20 +34,20 @@ class GoEnv(gym.Env):
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state = gogame.get_init_board(self.size, black_first)
+        self.state = GoEnv.gogame.get_init_board(self.size, black_first)
         return np.copy(self.state)
 
     @property
     def prev_player_passed(self):
-        return gogame.get_prev_player_passed(self.state)
+        return GoEnv.gogame.get_prev_player_passed(self.state)
 
     @property
     def turn(self):
-        return gogame.get_turn(self.state)
+        return GoEnv.gogame.get_turn(self.state)
 
     @property
     def game_ended(self):
-        return gogame.get_game_ended(self.state)
+        return GoEnv.gogame.get_game_ended(self.state)
 
     def step(self, action):
         ''' 
@@ -59,17 +59,17 @@ class GoEnv(gym.Env):
                 action = self.size**2
             else:
                 action = action[0] * self.size + action[1]
-        self.state = gogame.get_next_state(self.state, action)
-        return np.copy(self.state), self.get_reward(), gogame.get_game_ended(self.state), self.get_info()
+        self.state = GoEnv.gogame.get_next_state(self.state, action)
+        return np.copy(self.state), self.get_reward(), GoEnv.gogame.get_game_ended(self.state), self.get_info()
 
     def get_info(self):
         """
         :return: Debugging info for the state
         """
-        black_area, white_area = gogame.get_areas(self.state)
+        black_area, white_area = GoEnv.gogame.get_areas(self.state)
         return {
-            'prev_player_passed': gogame.get_prev_player_passed(self.state),
-            'turn': 'b' if gogame.get_turn(self.state) == BLACK else 'w',
+            'prev_player_passed': GoEnv.gogame.get_prev_player_passed(self.state),
+            'turn': 'b' if GoEnv.gogame.get_turn(self.state) == BLACK else 'w',
             'area': {
                 'w': white_area,
                 'b': black_area,
@@ -77,7 +77,7 @@ class GoEnv(gym.Env):
         }
 
     def get_canonical_state(self):
-        return gogame.get_canonical_form(self.state, self.turn)
+        return GoEnv.gogame.get_canonical_form(self.state, self.turn)
 
     def get_state(self):
         """
@@ -90,7 +90,7 @@ class GoEnv(gym.Env):
         Get's the winner in BLACK's perspective
         :return:
         """
-        black_area, white_area = gogame.get_areas(self.state)
+        black_area, white_area = GoEnv.gogame.get_areas(self.state)
         area_difference = black_area - white_area
 
         if self.game_ended:
@@ -110,7 +110,7 @@ class GoEnv(gym.Env):
             Winning and losing based on the Area rule
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
         '''
-        black_area, white_area = gogame.get_areas(self.state)
+        black_area, white_area = GoEnv.gogame.get_areas(self.state)
         area_difference = black_area - white_area
         
         if self.reward_method == RewardMethod.REAL:
@@ -125,7 +125,7 @@ class GoEnv(gym.Env):
 
     @property
     def action_space(self):
-        return gogame.get_action_size(self.state)
+        return GoEnv.gogame.get_action_size(self.state)
 
     def __str__(self):
         board_str = ' '
