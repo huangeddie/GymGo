@@ -42,6 +42,10 @@ class GoEnv(gym.Env):
         return gogame.get_prev_player_passed(self.state)
 
     @property
+    def turn(self):
+        return gogame.get_turn(self.state)
+
+    @property
     def game_ended(self):
         return gogame.get_game_ended(self.state)
 
@@ -50,11 +54,12 @@ class GoEnv(gym.Env):
         Assumes the correct player is making a move. Black goes first.
         return observation, reward, done, info 
         '''
-        if action is None:
-            action_1d = self.size**2
-        else:
-            action_1d = action[0] * self.size + action[1]
-        self.state = gogame.get_next_state(self.state, action_1d)
+        if not isinstance(action, int):
+            if action is None:
+                action = self.size**2
+            else:
+                action = action[0] * self.size + action[1]
+        self.state = gogame.get_next_state(self.state, action)
         return np.copy(self.state), self.get_reward(), gogame.get_game_ended(self.state), self.get_info()
 
     def get_info(self):
@@ -70,6 +75,9 @@ class GoEnv(gym.Env):
                 'b': black_area,
             }
         }
+
+    def get_canonical_state(self):
+        return gogame.get_canonical_form(self.state, self.turn)
 
     def get_state(self):
         """

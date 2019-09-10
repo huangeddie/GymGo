@@ -179,16 +179,22 @@ def get_areas(state):
 
 
 def get_canonical_form(state, player):
+    """
+    The returned state is a seperate copy of the given state
+    :param state:
+    :param player:
+    :return:
+    """
     # return state if player==1, else return -state if player==-1
     if player == BLACK:
-        return state
+        return np.copy(state)
     else:
         assert player == WHITE
         num_channels = state.shape[0]
         channels = np.arange(num_channels)
         channels[BLACK] = WHITE
         channels[WHITE] = BLACK
-        return state[channels]
+        return np.copy(state[channels])
 
 
 def get_symmetries(state, pi):
