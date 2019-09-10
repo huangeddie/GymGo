@@ -153,7 +153,7 @@ class GoEnv(gym.Env):
             board_str += '----' * self.size + '-'
             board_str += '\n'
         info = self.get_info()
-        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format(self.turn.name, self.prev_player_passed,
+        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('b' if self.turn == 0 else 'w', self.prev_player_passed,
                                                                                 self.game_ended)
         board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'],
                                                                              self.get_reward())
