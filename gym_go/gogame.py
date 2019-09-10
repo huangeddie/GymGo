@@ -186,15 +186,18 @@ def get_canonical_form(state, player):
     :return:
     """
     # return state if player==1, else return -state if player==-1
+    state = np.copy(state)
     if player == BLACK:
-        return np.copy(state)
+        return state
     else:
         assert player == WHITE
         num_channels = state.shape[0]
         channels = np.arange(num_channels)
         channels[BLACK] = WHITE
         channels[WHITE] = BLACK
-        return np.copy(state[channels])
+        state = state[channels]
+        state_utils.set_turn(state)
+        return state
 
 
 def get_symmetries(state, pi):
