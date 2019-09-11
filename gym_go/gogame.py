@@ -190,7 +190,6 @@ class GoGame:
         :param player:
         :return:
         """
-        # return state if player==1, else return -state if player==-1
         state = np.copy(state)
         if player == BLACK:
             return state

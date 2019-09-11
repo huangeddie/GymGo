@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from enum import Enum
 from gym_go.gogame import GoGame
-from gym_go.govars import BLACK, WHITE
+from gym_go import govars
 
 
 class RewardMethod(Enum):
@@ -17,6 +17,7 @@ class RewardMethod(Enum):
 class GoEnv(gym.Env):
     metadata = {'render.modes': ['terminal']}
     gogame = GoGame()
+    govars = govars
 
     def __init__(self, size, reward_method='real', black_first=True):
         '''
@@ -69,7 +70,7 @@ class GoEnv(gym.Env):
         black_area, white_area = GoEnv.gogame.get_areas(self.state)
         return {
             'prev_player_passed': GoEnv.gogame.get_prev_player_passed(self.state),
-            'turn': 'b' if GoEnv.gogame.get_turn(self.state) == BLACK else 'w',
+            'turn': 'b' if GoEnv.gogame.get_turn(self.state) == GoEnv.govars.BLACK else 'w',
             'area': {
                 'w': white_area,
                 'b': black_area,
