@@ -55,11 +55,10 @@ class GoEnv(gym.Env):
         Assumes the correct player is making a move. Black goes first.
         return observation, reward, done, info 
         '''
-        if isinstance(action, tuple) or isinstance(action, list) or isinstance(action, np.ndarray):
-            if action is None:
-                action = self.size**2
-            else:
-                action = action[0] * self.size + action[1]
+        if action is None:
+            action = self.size ** 2
+        elif isinstance(action, tuple) or isinstance(action, list) or isinstance(action, np.ndarray):
+            action = action[0] * self.size + action[1]
         self.state = GoEnv.gogame.get_next_state(self.state, action)
         return np.copy(self.state), self.get_reward(), GoEnv.gogame.get_game_ended(self.state), self.get_info()
 
