@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL
 from gym_go import state_utils
+from sklearn import preprocessing
 
 """
 The state of the game is a numpy array
@@ -204,19 +205,61 @@ class GoGame:
             return state
 
     @staticmethod
-    def get_symmetries(state, pi):
-        # mirror, rotational
-        m, n = state_utils.get_board_size(state)
-        assert (len(pi) == m * n + 1)  # 1 for pass
-        pi_board = np.reshape(pi[:-1], (m, n))
-        l = []
+    def get_symmetries(chunk):
+        """
+        :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
+        :return: All orientations that are symmetrical in a Go game over the 2nd and 3rd axes
+        (i.e. rotations, flipping and combos of them)
+        """
+        symmetries = []
 
-        for i in range(1, 5):
-            for j in [True, False]:
-                newB = np.rot90(state, i, axes=(1, 2))
-                newPi = np.rot90(pi_board, i)
-                if j:
-                    newB = np.flip(newB, axis=1)
-                    newPi = np.fliplr(newPi)
-                l += [(newB, list(newPi.ravel()) + [pi[-1]])]
-        return l
+        v_flip = np.flip(chunk, 1)
+        h_flip = np.flip(chunk, 2)
+
+        rot_90 = np.rot90(chunk, axes=(1, 2))
+        rot_180 = np.rot90(rot_90, axes=(1, 2))
+        rot_270 = np.rot90(rot_180, axes=(1, 2))
+
+        x_flip = np.flip(v_flip, 2)
+        d_flip = np.flip(rot_90, 2)
+        m_flip = np.rot90(h_flip, axes=(1, 2))
+
+        # vertical, horizontal flip
+        symmetries.append(v_flip)
+        symmetries.append(h_flip)
+
+        # Rotations
+        symmetries.append(rot_90)
+        symmetries.append(rot_270)
+
+        # Diagonal and cross flip
+        symmetries.append(d_flip)
+        symmetries.append(x_flip)
+
+        # Mirror and Identity
+        symmetries.append(m_flip)
+        symmetries.append(chunk)
+
+        return symmetries
+
+    @staticmethod
+    def random_weighted_action(move_weights):
+        """
+        Assumes all invalid moves have weight 0
+        Action is 1D
+        Expected shape is (NUM OF MOVES, )
+        """
+        move_weights = preprocessing.normalize(move_weights[np.newaxis], norm='l1')
+        return np.random.choice(np.arange(len(move_weights[0])), p=move_weights[0])
+
+    @staticmethod
+    def random_action(state):
+        """
+        Assumed to be (6, BOARD_SIZE, BOARD_SIZE)
+        Action is 1D
+        """
+        invalid_moves = state[INVD_CHNL].flatten()
+        invalid_moves = np.append(invalid_moves, 0)
+        move_weights = 1 - invalid_moves
+
+        return GoGame.random_weighted_action(move_weights)
