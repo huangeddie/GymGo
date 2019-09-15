@@ -14,6 +14,7 @@ class RewardMethod(Enum):
     REAL = 'real'
     HEURISTIC = 'heuristic'
 
+
 class GoEnv(gym.Env):
     metadata = {'render.modes': ['terminal']}
     gogame = GoGame()
@@ -49,6 +50,13 @@ class GoEnv(gym.Env):
     @property
     def game_ended(self):
         return GoEnv.gogame.get_game_ended(self.state)
+
+    def action_2d_to_1d(self, action_2d):
+        if action_2d is None:
+            action_1d = self.size ** 2
+        else:
+            action_1d = action_2d[0] * self.size + action_2d[1]
+        return action_1d
 
     def step(self, action):
         ''' 
@@ -112,13 +120,13 @@ class GoEnv(gym.Env):
         '''
         black_area, white_area = GoEnv.gogame.get_areas(self.state)
         area_difference = black_area - white_area
-        
+
         if self.reward_method == RewardMethod.REAL:
             return self.get_winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
             if self.game_ended:
-                return (1 if area_difference > 0 else -1) * self.size**2
+                return (1 if area_difference > 0 else -1) * self.size ** 2
             return area_difference
         else:
             raise Exception("Unknown Reward Method")
@@ -153,7 +161,8 @@ class GoEnv(gym.Env):
             board_str += '----' * self.size + '-'
             board_str += '\n'
         info = self.get_info()
-        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('b' if self.turn == 0 else 'w', self.prev_player_passed,
+        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('b' if self.turn == 0 else 'w',
+                                                                                self.prev_player_passed,
                                                                                 self.game_ended)
         board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'],
                                                                              self.get_reward())
