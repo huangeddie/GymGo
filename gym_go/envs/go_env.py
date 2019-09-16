@@ -58,6 +58,9 @@ class GoEnv(gym.Env):
             action_1d = action_2d[0] * self.size + action_2d[1]
         return action_1d
 
+    def get_valid_moves(self):
+        return GoGame.get_valid_moves(self.state)
+
     def step(self, action):
         ''' 
         Assumes the correct player is making a move. Black goes first.
