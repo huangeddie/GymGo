@@ -5,6 +5,7 @@ from gym_go.gogame import GoGame
 from gym_go import govars
 
 
+
 class RewardMethod(Enum):
     """
     REAL: 0 = game is ongoing, 1 = black won, -1 = game tied or white won
@@ -60,6 +61,11 @@ class GoEnv(gym.Env):
 
     def get_valid_moves(self):
         return GoGame.get_valid_moves(self.state)
+
+    def uniform_random_action(self):
+        valid_moves = self.get_valid_moves()
+        valid_move_idcs = np.argwhere(valid_moves > 0)
+        return np.random.choice(valid_move_idcs)
 
     def step(self, action):
         ''' 
