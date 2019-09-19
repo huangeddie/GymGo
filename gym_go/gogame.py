@@ -268,7 +268,7 @@ class GoGame:
     def str(state):
         board_str = ' '
 
-        size = state[1]
+        size = state.shape[1]
         for i in range(size):
             board_str += '   {}'.format(i)
         board_str += '\n  '
