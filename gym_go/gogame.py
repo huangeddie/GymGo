@@ -263,3 +263,41 @@ class GoGame:
         move_weights = 1 - invalid_moves
 
         return GoGame.random_weighted_action(move_weights)
+
+    @staticmethod
+    def str(state):
+        board_str = ' '
+
+        size = state[1]
+        for i in range(size):
+            board_str += '   {}'.format(i)
+        board_str += '\n  '
+        board_str += '----' * size + '-'
+        board_str += '\n'
+        for i in range(size):
+            board_str += '{} |'.format(i)
+            for j in range(size):
+                if state[0][i, j] == 1:
+                    board_str += ' B'
+                elif state[1][i, j] == 1:
+                    board_str += ' W'
+                elif state[2][i, j] == 1:
+                    board_str += ' .'
+                else:
+                    board_str += '  '
+
+                board_str += ' |'
+
+            board_str += '\n  '
+            board_str += '----' * size + '-'
+            board_str += '\n'
+
+        black_area, white_area = GoGame.get_areas(state)
+        game_ended = GoGame.get_game_ended(state)
+        prev_player_passed = GoGame.get_prev_player_passed(state)
+        turn = GoGame.get_turn(state)
+        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('B' if turn == 0 else 'W',
+                                                                                prev_player_passed,
+                                                                                game_ended)
+        board_str += '\tBlack Area: {}, White Area: {}\n'.format(black_area, white_area)
+        return board_str

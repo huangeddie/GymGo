@@ -145,37 +145,7 @@ class GoEnv(gym.Env):
         return GoEnv.gogame.get_action_size(self.state)
 
     def __str__(self):
-        board_str = ' '
-
-        for i in range(self.size):
-            board_str += '   {}'.format(i)
-        board_str += '\n  '
-        board_str += '----' * self.size + '-'
-        board_str += '\n'
-        for i in range(self.size):
-            board_str += '{} |'.format(i)
-            for j in range(self.size):
-                if self.state[0][i, j] == 1:
-                    board_str += ' B'
-                elif self.state[1][i, j] == 1:
-                    board_str += ' W'
-                elif self.state[2][i, j] == 1:
-                    board_str += ' .'
-                else:
-                    board_str += '  '
-
-                board_str += ' |'
-
-            board_str += '\n  '
-            board_str += '----' * self.size + '-'
-            board_str += '\n'
-        info = self.get_info()
-        board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('b' if self.turn == 0 else 'w',
-                                                                                self.prev_player_passed,
-                                                                                self.game_ended)
-        board_str += '\tBlack Area: {}, White Area: {}, Reward: {}\n'.format(info['area']['b'], info['area']['w'],
-                                                                             self.get_reward())
-        return board_str
+        return GoGame.str(self.state)
 
     def render(self, mode='terminal'):
         if mode == 'terminal':
