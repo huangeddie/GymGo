@@ -152,6 +152,15 @@ class GoGame:
         return np.append(1 - state[INVD_CHNL].flatten(), 1)
 
     @staticmethod
+    def action_2d_to_1d(action_2d, state):
+        size = state.shape[1]
+        if action_2d is None:
+            action_1d = size ** 2
+        else:
+            action_1d = action_2d[0] * size + action_2d[1]
+        return action_1d
+
+    @staticmethod
     def get_areas(state):
         '''
         Return black area, white area
