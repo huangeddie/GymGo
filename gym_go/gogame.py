@@ -214,40 +214,47 @@ class GoGame:
             return state
 
     @staticmethod
+    def random_symmetry(chunk):
+        """
+        Returns a random symmetry of the chunk
+        :param chunk:
+        :return:
+        """
+        orientation = np.random.randint(0,8)
+
+        if (orientation >> 0) % 2:
+            # Horizontal flip
+            chunk = np.flip(chunk, 2)
+        if (orientation >> 1) % 2:
+            # Vertical flip
+            chunk = np.flip(chunk, 1)
+        if (orientation >> 2) % 2:
+            # Rotate 90 degrees
+            chunk = np.rot90(chunk, axes=(1, 2))
+
+        return chunk
+
+    @staticmethod
     def get_symmetries(chunk):
         """
         :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
-        :return: All orientations that are symmetrical in a Go game over the 2nd and 3rd axes
+        :return: All 8 orientations that are symmetrical in a Go game over the 2nd and 3rd axes
         (i.e. rotations, flipping and combos of them)
         """
         symmetries = []
 
-        v_flip = np.flip(chunk, 1)
-        h_flip = np.flip(chunk, 2)
-
-        rot_90 = np.rot90(chunk, axes=(1, 2))
-        rot_180 = np.rot90(rot_90, axes=(1, 2))
-        rot_270 = np.rot90(rot_180, axes=(1, 2))
-
-        x_flip = np.flip(v_flip, 2)
-        d_flip = np.flip(rot_90, 2)
-        m_flip = np.rot90(h_flip, axes=(1, 2))
-
-        # vertical, horizontal flip
-        symmetries.append(v_flip)
-        symmetries.append(h_flip)
-
-        # Rotations
-        symmetries.append(rot_90)
-        symmetries.append(rot_270)
-
-        # Diagonal and cross flip
-        symmetries.append(d_flip)
-        symmetries.append(x_flip)
-
-        # Mirror and Identity
-        symmetries.append(m_flip)
-        symmetries.append(chunk)
+        for i in range(8):
+            x = chunk
+            if (i >> 0) % 2:
+                # Horizontal flip
+                x = np.flip(x, 2)
+            if (i >> 1) % 2:
+                # Vertical flip
+                x = np.flip(x, 1)
+            if (i >> 2) % 2:
+                # Rotation 90 degrees
+                x = np.rot90(x, axes=(1, 2))
+            symmetries.append(x)
 
         return symmetries
 
