@@ -217,7 +217,7 @@ class GoGame:
     def random_symmetry(chunk):
         """
         Returns a random symmetry of the chunk
-        :param chunk:
+        :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
         :return:
         """
         orientation = np.random.randint(0,8)
