@@ -4,8 +4,6 @@ from enum import Enum
 from gym_go.gogame import GoGame
 from gym_go import govars
 
-
-
 class RewardMethod(Enum):
     """
     REAL: 0 = game is ongoing, 1 = black won, -1 = game tied or white won
@@ -150,5 +148,33 @@ class GoEnv(gym.Env):
     def render(self, mode='terminal'):
         if mode == 'terminal':
             print(self.__str__())
-        else:
+        elif mode == 'human':
+            import pyglet
+            from pyglet.window import mouse
+
+            window = pyglet.window.Window()
+
+            @window.event
+            def on_key_press(symbol, modifiers):
+                print('A key was pressed')
+
+            @window.event
+            def on_draw():
+                window.clear()
+
+                batch = pyglet.graphics.Batch()
+
+                vertex_list = batch.add(2, pyglet.gl.GL_POINTS, None,
+                                        ('v2i', (10, 15, 30, 35)),
+                                        ('c3B', (0, 0, 255, 0, 255, 0))
+                                        )
+
+                batch.draw()
+
+            @window.event
+            def on_mouse_press(x, y, button, modifiers):
+                if button == mouse.LEFT:
+                    print('The left mouse button was pressed.')
+
+            pyglet.app.run()
             raise Exception("Unknown mode")
