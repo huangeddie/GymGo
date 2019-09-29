@@ -21,9 +21,9 @@ class GoEnv(gym.Env):
 
     def __init__(self, size, reward_method='real', black_first=True):
         '''
-        @param reward_method: either 'heuristic' or 'real' 
-        heuristic: gives # black pieces - # white pieces. 
-        real: gives 0 for in-game move, 1 for winning, -1 for losing, 
+        @param reward_method: either 'heuristic' or 'real'
+        heuristic: gives # black pieces - # white pieces.
+        real: gives 0 for in-game move, 1 for winning, -1 for losing,
             0 for draw, all from black player's perspective
         '''
         self.size = size
@@ -66,9 +66,9 @@ class GoEnv(gym.Env):
         return np.random.choice(valid_move_idcs)
 
     def step(self, action):
-        ''' 
+        '''
         Assumes the correct player is making a move. Black goes first.
-        return observation, reward, done, info 
+        return observation, reward, done, info
         '''
         if action is None:
             action = self.size ** 2
@@ -120,7 +120,7 @@ class GoEnv(gym.Env):
         '''
         Return reward based on reward_method.
         heuristic: black total area - white total area
-        real: 0 for in-game move, 1 for winning, -1 for losing, 
+        real: 0 for in-game move, 1 for winning, -1 for losing,
             0 for draw, from black player's perspective.
             Winning and losing based on the Area rule
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
@@ -152,29 +152,111 @@ class GoEnv(gym.Env):
             import pyglet
             from pyglet.window import mouse
 
-            window = pyglet.window.Window()
+            screen = pyglet.window.get_platform().get_default_display().get_default_screen()
+            window_width = min(screen.width, screen.height) / 2
+            window_height = window_width * 1.2
+            window = pyglet.window.Window(window_width, window_height)
+            lower_coord = window_width * 0.15
+            board_size = window_width * 0.7
+            delta = board_size / (self.size - 1)
+            piece_r = delta / 3.3 # radius
 
-            @window.event
-            def on_key_press(symbol, modifiers):
-                print('A key was pressed')
+            def draw_grid():
+                label_offset = window_width * 0.08
+                upper_coord = board_size + lower_coord
+                left_coord = lower_coord
+                right_coord = lower_coord
+                ver_list = []
+                color_list = []
+                num_vert = 0
+                batch = pyglet.graphics.Batch()
+                for i in range(self.size):
+                    # horizontal
+                    ver_list.extend((lower_coord, left_coord,
+                        upper_coord, right_coord))
+                    # vertical
+                    ver_list.extend((left_coord, lower_coord,
+                        right_coord, upper_coord))
+                    color_list.extend([0] * 12) # black
+                    # label on the left
+                    pyglet.text.Label(str(i),
+                          font_name='Courier', font_size=18,
+                          x=lower_coord-label_offset, y=left_coord,
+                          anchor_x='center', anchor_y='center',
+                          color=(0,0,0,255), batch=batch, dpi=110)
+                    # label on the bottom
+                    pyglet.text.Label(str(i),
+                          font_name='Courier', font_size=18,
+                          x=left_coord, y=lower_coord-label_offset,
+                          anchor_x='center', anchor_y='center',
+                          color=(0,0,0,255), batch=batch, dpi=110)
+                    left_coord += delta
+                    right_coord += delta
+                    num_vert += 4
+                batch.add(num_vert, pyglet.gl.GL_LINES, None,
+                    ('v2f/static', ver_list), ('c3B/static', color_list))
+                batch.draw()
+
+            def draw_circle(x, y, color, radius):
+                num_sides = 50
+                verts = [x, y]
+                colors = [color] * 3
+                for i in range(num_sides + 1):
+                    verts.append(x + radius * np.cos(i * np.pi * 2 / num_sides))
+                    verts.append(y + radius * np.sin(i * np.pi * 2 / num_sides))
+                    colors.extend([color] * 3)
+                pyglet.graphics.draw(len(verts) // 2, pyglet.gl.GL_TRIANGLE_FAN,
+                    ('v2f', verts), ('c3B', colors))
+
+            def draw_info():
+                info_offset = window_height * 0.1
+                info = self.get_info()
+                batch = pyglet.graphics.Batch()
+                player = 'Black' if info['turn'] == 'b' else 'White'
+                passed = 'passed' if info['prev_player_passed'] else 'did not pass'
+                turn_label = pyglet.text.Label("{}'s turn, previous player {}".format(player, passed),
+                      font_name='Georgia', font_size=12,
+                      x=window_width/2, y=window_height-info_offset,
+                      anchor_x='center', anchor_y='center',
+                      color=(0,0,0,255), batch=batch, dpi=110)
+                pyglet.text.Label("black area: {}, white area: {}, game over: {}".format(info['area']['b'], info['area']['w'], self.game_ended),
+                      font_name='Georgia', font_size=12,
+                      x=window_width/2, y=window_height-info_offset-turn_label.content_height,
+                      anchor_x='center', anchor_y='center',
+                      color=(0,0,0,255), batch=batch, dpi=110)
+                batch.draw()
 
             @window.event
             def on_draw():
+                pyglet.gl.glClearColor(242/255, 197/255, 119/255, 1)
                 window.clear()
 
-                batch = pyglet.graphics.Batch()
+                pyglet.gl.glLineWidth(3)
+                # draw the grid and labels
+                draw_grid()
 
-                vertex_list = batch.add(2, pyglet.gl.GL_POINTS, None,
-                                        ('v2i', (10, 15, 30, 35)),
-                                        ('c3B', (0, 0, 255, 0, 255, 0))
-                                        )
+                # draw the pieces
+                for i in range(self.size):
+                    for j in range(self.size):
+                        # black piece
+                        if self.state[0][i, j] == 1:
+                            draw_circle(lower_coord + i * delta, lower_coord + j * delta,
+                                0, piece_r) # 0 for black
 
-                batch.draw()
+                        # white piece
+                        if self.state[1][i, j] == 1:
+                            draw_circle(lower_coord + i * delta, lower_coord + j * delta,
+                                225, piece_r) # 255 for white
+
+                # info on top of the board
+                draw_info()
 
             @window.event
             def on_mouse_press(x, y, button, modifiers):
                 if button == mouse.LEFT:
-                    print('The left mouse button was pressed.')
+                    x_coord = round((x - lower_coord) / delta)
+                    y_coord = round((y - lower_coord) / delta)
+                    self.step((x_coord, y_coord))
+                    return (x_coord, y_coord)
 
             pyglet.app.run()
-            raise Exception("Unknown mode")
