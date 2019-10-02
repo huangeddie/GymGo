@@ -2,12 +2,14 @@
 An environment for the board game Go. It is implemented using OpenAI's Gym API.
 
 # Installation
-```
-pip install -e gym-go
+```bash
+# In the root directory
+pip install -e .
 ```
 
 # Example
-```python
+```bash
+# In the root directory
 python3 demo.py
 ```
 ![alt text](screenshots/human_ui.png)
