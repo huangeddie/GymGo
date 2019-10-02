@@ -157,7 +157,7 @@ class GoEnv(gym.Env):
             from pyglet.window import key
 
             screen = pyglet.window.get_platform().get_default_display().get_default_screen()
-            window_width = min(screen.width, screen.height) / 2
+            window_width = min(screen.width, screen.height) * 2 / 3
             window_height = window_width * 1.2
             window = pyglet.window.Window(window_width, window_height)
 
@@ -165,92 +165,87 @@ class GoEnv(gym.Env):
             cursor = window.get_system_mouse_cursor(window.CURSOR_CROSSHAIR)
             window.set_mouse_cursor(cursor)
 
-            lower_coord = window_width * 0.15
-            board_size = window_width * 0.7
+            lower_grid_coord = window_width * 0.1
+            board_size = window_width * 0.8
+            upper_grid_coord = board_size + lower_grid_coord
             delta = board_size / (self.size - 1)
             piece_r = delta / 3.3  # radius
 
             def draw_grid():
-                label_offset = window_width * 0.08
-                upper_coord = board_size + lower_coord
-                left_coord = lower_coord
-                right_coord = lower_coord
+                label_offset = window_width * 0.05
+                left_coord = lower_grid_coord
+                right_coord = lower_grid_coord
                 ver_list = []
                 color_list = []
                 num_vert = 0
                 batch = pyglet.graphics.Batch()
                 for i in range(self.size):
                     # horizontal
-                    ver_list.extend((lower_coord, left_coord,
-                                     upper_coord, right_coord))
+                    ver_list.extend((lower_grid_coord, left_coord,
+                                     upper_grid_coord, right_coord))
                     # vertical
-                    ver_list.extend((left_coord, lower_coord,
-                                     right_coord, upper_coord))
-                    color_list.extend([0] * 12)  # black
+                    ver_list.extend((left_coord, lower_grid_coord,
+                                     right_coord, upper_grid_coord))
+                    color_list.extend([0.3, 0.3, 0.3] * 4)  # black
                     # label on the left
                     pyglet.text.Label(str(i),
-                                      font_name='Courier', font_size=18,
-                                      x=lower_coord - label_offset, y=left_coord,
+                                      font_name='Courier', font_size=11,
+                                      x=lower_grid_coord - label_offset, y=left_coord,
                                       anchor_x='center', anchor_y='center',
-                                      color=(0, 0, 0, 255), batch=batch, dpi=110)
+                                      color=(0, 0, 0, 255), batch=batch)
                     # label on the bottom
                     pyglet.text.Label(str(i),
-                                      font_name='Courier', font_size=18,
-                                      x=left_coord, y=lower_coord - label_offset,
+                                      font_name='Courier', font_size=11,
+                                      x=left_coord, y=lower_grid_coord - label_offset,
                                       anchor_x='center', anchor_y='center',
-                                      color=(0, 0, 0, 255), batch=batch, dpi=110)
+                                      color=(0, 0, 0, 255), batch=batch)
                     left_coord += delta
                     right_coord += delta
                     num_vert += 4
                 batch.add(num_vert, pyglet.gl.GL_LINES, None,
-                          ('v2f/static', ver_list), ('c3B/static', color_list))
+                          ('v2f/static', ver_list), ('c3f/static', color_list))
                 batch.draw()
 
             def draw_circle(x, y, color, radius):
                 num_sides = 50
                 verts = [x, y]
-                colors = color
+                colors = list(color)
                 for i in range(num_sides + 1):
                     verts.append(x + radius * np.cos(i * np.pi * 2 / num_sides))
                     verts.append(y + radius * np.sin(i * np.pi * 2 / num_sides))
                     colors.extend(color)
                 pyglet.graphics.draw(len(verts) // 2, pyglet.gl.GL_TRIANGLE_FAN,
-                                     ('v2f', verts), ('c3B', colors))
+                                     ('v2f', verts), ('c3f', colors))
 
             def draw_info():
                 info = self.get_info()
                 batch = pyglet.graphics.Batch()
                 player = 'B' if info['turn'] == 'b' else 'W'
-                curr_offset = 20
-                labels = [
-                    "Turn: {}".format(player),
-                    "{}B, {}W".format(info['area']['b'], info['area']['w']),
-                    "Passed: {} | Game: {}".format(info['prev_player_passed'],
-                                                   "OVER" if self.game_ended else "ONGOING")
-                ]
-                for label in labels:
-                    textlabel = pyglet.text.Label(label,
-                                                  font_name='Helvetica', font_size=12,
-                                                  x=window_width / 2, y=window_height - curr_offset,
-                                                  anchor_x='center', anchor_y='center',
-                                                  color=(0, 0, 0, 255), batch=batch, dpi=110)
-                    curr_offset += textlabel.content_height + 10
+                curr_offset = 60
+                label = "Turn: {}\n{}B, {}W\nPassed: {} | Game: {}".format(player, info['area']['b'], info['area']['w'],
+                                                                           info['prev_player_passed'],
+                                                                           "OVER" if self.game_ended else "ONGOING")
+                pyglet.text.Label(label,
+                                  font_name='Helvetica', font_size=16,
+                                  x=window_width / 2, y=window_height - curr_offset,
+                                  anchor_x='center', anchor_y='center',
+                                  color=(0, 0, 0, 255), batch=batch, width=window_width, align='center', multiline=True)
 
                 batch.draw()
 
             def draw_passing_button():
                 button_offset = window_height * 0.2
                 batch = pyglet.graphics.Batch()
-                pyglet.text.Label('Pass (p)\nReset (r)',
+                pyglet.text.Label('Pass (p) | Reset (r)',
                                   font_name='Helvetica',
-                                  font_size=14,
+                                  font_size=11,
                                   x=window_width / 2, y=window_height - button_offset,
                                   anchor_x='center', anchor_y='center', batch=batch)
                 batch.draw()
 
             @window.event
             def on_draw():
-                pyglet.gl.glClearColor(242 / 255, 197 / 255, 119 / 255, 1)
+                pyglet.gl.glClearColor(0.7, 0.5, 0.3, 1)
                 window.clear()
 
                 pyglet.gl.glLineWidth(3)
@@ -262,14 +257,14 @@ class GoEnv(gym.Env):
                     for j in range(self.size):
                         # black piece
                         if self.state[0][i, j] == 1:
-                            draw_circle(lower_coord + i * delta, lower_coord + j * delta,
-                                        [int(0.05882352963 * 255), int(0.180392161 * 255), int(0.2470588237 * 255)],
+                            draw_circle(lower_grid_coord + i * delta, lower_grid_coord + j * delta,
+                                        [0.05882352963, 0.180392161, 0.2470588237],
                                         piece_r)  # 0 for black
 
                         # white piece
                         if self.state[1][i, j] == 1:
-                            draw_circle(lower_coord + i * delta, lower_coord + j * delta,
-                                        [int(0.9754120272 * 255)] * 3, piece_r)  # 255 for white
+                            draw_circle(lower_grid_coord + i * delta, lower_grid_coord + j * delta,
+                                        [0.9754120272] * 3, piece_r)  # 255 for white
 
                 # info on top of the board
                 draw_info()
@@ -279,8 +274,8 @@ class GoEnv(gym.Env):
             @window.event
             def on_mouse_press(x, y, button, modifiers):
                 if button == mouse.LEFT:
-                    grid_x = (x - lower_coord)
-                    grid_y = (y - lower_coord)
+                    grid_x = (x - lower_grid_coord)
+                    grid_y = (y - lower_grid_coord)
                     x_coord = round(grid_x / delta)
                     y_coord = round(grid_y / delta)
                     try:
