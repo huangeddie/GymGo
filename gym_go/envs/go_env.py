@@ -1,8 +1,9 @@
 import gym
 import numpy as np
 from enum import Enum
+
 from gym_go.gogame import GoGame
-from gym_go import govars
+from gym_go import govars, rendering
 
 
 class RewardMethod(Enum):
@@ -16,11 +17,11 @@ class RewardMethod(Enum):
 
 
 class GoEnv(gym.Env):
-    metadata = {'render.modes': ['terminal']}
+    metadata = {'render.modes': ['terminal', 'human']}
     gogame = GoGame()
     govars = govars
 
-    def __init__(self, size, reward_method='real', black_first=True):
+    def __init__(self, size, reward_method='real', black_first=True, state=None):
         '''
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
@@ -28,15 +29,23 @@ class GoEnv(gym.Env):
             0 for draw, all from black player's perspective
         '''
         self.size = size
-        self.state = GoEnv.gogame.get_init_board(size, black_first)
+        if state is None:
+            self.state = GoEnv.gogame.get_init_board(size, black_first)
+        else:
+            assert state.shape[1] == size
+            self.state = np.copy(state)
         self.reward_method = RewardMethod(reward_method)
 
-    def reset(self, black_first=True):
+    def reset(self, black_first=True, state=None):
         '''
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state = GoEnv.gogame.get_init_board(self.size, black_first)
+        if state is None:
+            self.state = GoEnv.gogame.get_init_board(self.size, black_first)
+        else:
+            assert state.shape[1] == self.size
+            self.state = np.copy(state)
         return np.copy(self.state)
 
     @property
@@ -63,7 +72,7 @@ class GoEnv(gym.Env):
 
     def uniform_random_action(self):
         valid_moves = self.get_valid_moves()
-        valid_move_idcs = np.argwhere(valid_moves > 0)
+        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
         return np.random.choice(valid_move_idcs)
 
     def step(self, action):
@@ -91,7 +100,8 @@ class GoEnv(gym.Env):
             'area': {
                 'w': white_area,
                 'b': black_area,
-            }
+            },
+            'game_ended': GoGame.get_game_ended(self.state)
         }
 
     def get_canonical_state(self):
@@ -148,6 +158,12 @@ class GoEnv(gym.Env):
     def __str__(self):
         return GoGame.str(self.state)
 
+    def close(self):
+        if hasattr(self, 'window'):
+            assert hasattr(self, 'pyglet')
+            self.window.close()
+            self.pyglet.app.exit()
+
     def render(self, mode='terminal'):
         if mode == 'terminal':
             print(self.__str__())
@@ -161,87 +177,20 @@ class GoEnv(gym.Env):
             window_height = window_width * 1.2
             window = pyglet.window.Window(window_width, window_height)
 
-            # Cursor
+            self.window = window
+            self.pyglet = pyglet
+            self.user_action = None
+
+            # Set Cursor
             cursor = window.get_system_mouse_cursor(window.CURSOR_CROSSHAIR)
             window.set_mouse_cursor(cursor)
 
-            lower_grid_coord = window_width * 0.1
-            board_size = window_width * 0.8
+            # Outlines
+            lower_grid_coord = window_width * 0.075
+            board_size = window_width * 0.85
             upper_grid_coord = board_size + lower_grid_coord
             delta = board_size / (self.size - 1)
             piece_r = delta / 3.3  # radius
-
-            def draw_grid():
-                label_offset = window_width * 0.05
-                left_coord = lower_grid_coord
-                right_coord = lower_grid_coord
-                ver_list = []
-                color_list = []
-                num_vert = 0
-                batch = pyglet.graphics.Batch()
-                for i in range(self.size):
-                    # horizontal
-                    ver_list.extend((lower_grid_coord, left_coord,
-                                     upper_grid_coord, right_coord))
-                    # vertical
-                    ver_list.extend((left_coord, lower_grid_coord,
-                                     right_coord, upper_grid_coord))
-                    color_list.extend([0.3, 0.3, 0.3] * 4)  # black
-                    # label on the left
-                    pyglet.text.Label(str(i),
-                                      font_name='Courier', font_size=11,
-                                      x=lower_grid_coord - label_offset, y=left_coord,
-                                      anchor_x='center', anchor_y='center',
-                                      color=(0, 0, 0, 255), batch=batch)
-                    # label on the bottom
-                    pyglet.text.Label(str(i),
-                                      font_name='Courier', font_size=11,
-                                      x=left_coord, y=lower_grid_coord - label_offset,
-                                      anchor_x='center', anchor_y='center',
-                                      color=(0, 0, 0, 255), batch=batch)
-                    left_coord += delta
-                    right_coord += delta
-                    num_vert += 4
-                batch.add(num_vert, pyglet.gl.GL_LINES, None,
-                          ('v2f/static', ver_list), ('c3f/static', color_list))
-                batch.draw()
-
-            def draw_circle(x, y, color, radius):
-                num_sides = 50
-                verts = [x, y]
-                colors = list(color)
-                for i in range(num_sides + 1):
-                    verts.append(x + radius * np.cos(i * np.pi * 2 / num_sides))
-                    verts.append(y + radius * np.sin(i * np.pi * 2 / num_sides))
-                    colors.extend(color)
-                pyglet.graphics.draw(len(verts) // 2, pyglet.gl.GL_TRIANGLE_FAN,
-                                     ('v2f', verts), ('c3f', colors))
-
-            def draw_info():
-                info = self.get_info()
-                batch = pyglet.graphics.Batch()
-                player = 'B' if info['turn'] == 'b' else 'W'
-                curr_offset = 60
-                label = "Turn: {}\n{}B, {}W\nPassed: {} | Game: {}".format(player, info['area']['b'], info['area']['w'],
-                                                                           info['prev_player_passed'],
-                                                                           "OVER" if self.game_ended else "ONGOING")
-                pyglet.text.Label(label,
-                                  font_name='Helvetica', font_size=16,
-                                  x=window_width / 2, y=window_height - curr_offset,
-                                  anchor_x='center', anchor_y='center',
-                                  color=(0, 0, 0, 255), batch=batch, width=window_width, align='center', multiline=True)
-
-                batch.draw()
-
-            def draw_passing_button():
-                button_offset = window_height * 0.2
-                batch = pyglet.graphics.Batch()
-                pyglet.text.Label('Pass (p) | Reset (r)',
-                                  font_name='Helvetica',
-                                  font_size=11,
-                                  x=window_width / 2, y=window_height - button_offset,
-                                  anchor_x='center', anchor_y='center', batch=batch)
-                batch.draw()
 
             @window.event
             def on_draw():
@@ -249,27 +198,23 @@ class GoEnv(gym.Env):
                 window.clear()
 
                 pyglet.gl.glLineWidth(3)
+                batch = pyglet.graphics.Batch()
+
                 # draw the grid and labels
-                draw_grid()
-
-                # draw the pieces
-                for i in range(self.size):
-                    for j in range(self.size):
-                        # black piece
-                        if self.state[0][i, j] == 1:
-                            draw_circle(lower_grid_coord + i * delta, lower_grid_coord + j * delta,
-                                        [0.05882352963, 0.180392161, 0.2470588237],
-                                        piece_r)  # 0 for black
-
-                        # white piece
-                        if self.state[1][i, j] == 1:
-                            draw_circle(lower_grid_coord + i * delta, lower_grid_coord + j * delta,
-                                        [0.9754120272] * 3, piece_r)  # 255 for white
+                rendering.draw_grid(batch, delta, self.size, lower_grid_coord, upper_grid_coord)
 
                 # info on top of the board
-                draw_info()
+                rendering.draw_info(batch, window_width, window_height, upper_grid_coord, self.get_info())
 
-                draw_passing_button()
+                # Inform user what they can do
+                rendering.draw_command_labels(batch, window_width, window_height)
+
+                rendering.draw_title(batch, window_width, window_height)
+
+                batch.draw()
+
+                # draw the pieces
+                rendering.draw_pieces(batch, lower_grid_coord, delta, piece_r, self.size, self.state)
 
             @window.event
             def on_mouse_press(x, y, button, modifiers):
@@ -279,15 +224,26 @@ class GoEnv(gym.Env):
                     x_coord = round(grid_x / delta)
                     y_coord = round(grid_y / delta)
                     try:
-                        self.step((x_coord, y_coord))
+                        self.window.close()
+                        pyglet.app.exit()
+                        self.user_action = (x_coord, y_coord)
                     except:
                         pass
 
             @window.event
             def on_key_press(symbol, modifiers):
                 if symbol == key.P:
-                    self.step(None)
+                    self.window.close()
+                    pyglet.app.exit()
+                    self.user_action = None
                 elif symbol == key.R:
                     self.reset()
+                    self.window.close()
+                    pyglet.app.exit()
+                elif symbol == key.E:
+                    self.window.close()
+                    pyglet.app.exit()
 
             pyglet.app.run()
+
+            return self.user_action

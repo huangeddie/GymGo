@@ -4,4 +4,4 @@ from gym.utils import seeding
 import numpy as np
 
 class GoExtraHardEnv(gym.Env):
-    metadata = {'render.modes': ['human']}
+    metadata = {'render.modes': ['human', 'terminal']}
