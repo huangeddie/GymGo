@@ -31,7 +31,7 @@ def draw_info(batch, window_width, window_height, upper_grid_coord, info):
 
     # Areas
     pyglet.text.Label("{}B | {}W".format(info['area']['b'], info['area']['w'], ), font_name='Helvetica', font_size=16,
-                      x=window_width / 2, y=upper_grid_coord + 20, anchor_x='center', color=(0, 0, 0, 192), batch=batch,
+                      x=window_width / 2, y=upper_grid_coord + 80, anchor_x='center', color=(0, 0, 0, 192), batch=batch,
                       width=window_width, align='center')
 
 
