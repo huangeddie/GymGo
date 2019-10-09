@@ -3,7 +3,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Demo Go Environment')
 parser.add_argument('--randai', action='store_true')
-parser.add_argument('--boardsize', type=int, default=19)
+parser.add_argument('--boardsize', type=int, default=7)
 args = parser.parse_args()
 
 go_env = gym.make('gym_go:go-v0', size=args.boardsize)

@@ -124,8 +124,11 @@ class GoEnv(gym.Env):
         if self.game_ended:
             if area_difference > 0:
                 return 1
+            elif area_difference == 0:
+                return 0.5
             else:
-                return -1
+                assert area_difference < 0
+                return 0
         else:
             return 0
 
@@ -133,9 +136,10 @@ class GoEnv(gym.Env):
         '''
         Return reward based on reward_method.
         heuristic: black total area - white total area
-        real: 0 for in-game move, 1 for winning, -1 for losing,
-            0 for draw, from black player's perspective.
+        real: 0 for in-game move, 1 for winning, 0 for losing,
+            0.5 for draw, from black player's perspective.
             Winning and losing based on the Area rule
+            Also known as Trump Taylor Scoring
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
         '''
         black_area, white_area = GoEnv.gogame.get_areas(self.state)

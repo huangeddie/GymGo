@@ -586,7 +586,15 @@ class TestGoEnv(unittest.TestCase):
         state, reward, done, info = env.step(None)
         self.assertEqual(reward, 0)
         state, reward, done, info = env.step(None)
-        self.assertEqual(reward, -1)
+        self.assertEqual(reward, 0)
+
+        # Tie
+        env.reset()
+
+        state, reward, done, info = env.step(None)
+        self.assertEqual(reward, 0)
+        state, reward, done, info = env.step(None)
+        self.assertEqual(reward, 0.5)
 
         env.close()
 
