@@ -49,15 +49,12 @@ class GoEnv(gym.Env):
             self.state = np.copy(state)
         return np.copy(self.state)
 
-    @property
     def prev_player_passed(self):
         return GoEnv.gogame.get_prev_player_passed(self.state)
 
-    @property
     def turn(self):
         return GoEnv.gogame.get_turn(self.state)
 
-    @property
     def game_ended(self):
         return GoEnv.gogame.get_game_ended(self.state)
 
@@ -106,7 +103,7 @@ class GoEnv(gym.Env):
         }
 
     def get_canonical_state(self):
-        return GoEnv.gogame.get_canonical_form(self.state, self.turn)
+        return GoEnv.gogame.get_canonical_form(self.state, self.turn())
 
     def get_state(self):
         """
@@ -135,8 +132,8 @@ class GoEnv(gym.Env):
         :return:
         """
 
-        if self.game_ended:
-            self.get_winning()
+        if self.game_ended():
+            return self.get_winning()
         else:
             return 0
 
@@ -157,7 +154,7 @@ class GoEnv(gym.Env):
             return self.get_winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
-            if self.game_ended:
+            if self.game_ended():
                 return (1 if area_difference > 0 else -1) * self.size ** 2
             return area_difference
         else:

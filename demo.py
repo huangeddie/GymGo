@@ -16,7 +16,7 @@ while not done:
         print(e)
         continue
     if args.randai:
-        if go_env.game_ended:
+        if go_env.game_ended():
             break
         action = go_env.uniform_random_action()
         _, _, done, _ = go_env.step(action)
