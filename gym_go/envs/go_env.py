@@ -1,9 +1,10 @@
-import gym
-import numpy as np
 from enum import Enum
 
-from gym_go.gogame import GoGame
+import gym
+import numpy as np
+
 from gym_go import govars, rendering
+from gym_go.gogame import GoGame
 
 
 class RewardMethod(Enum):
@@ -113,22 +114,29 @@ class GoEnv(gym.Env):
         """
         return np.copy(self.state)
 
+    def get_winning(self):
+        """
+        :return: Who's currently winning, regardless if the game is over
+        """
+        black_area, white_area = GoEnv.gogame.get_areas(self.state)
+        area_difference = black_area - white_area
+
+        if area_difference > 0:
+            return 1
+        elif area_difference == 0:
+            return 0.5
+        else:
+            assert area_difference < 0
+            return 0
+
     def get_winner(self):
         """
         Get's the winner in BLACK's perspective
         :return:
         """
-        black_area, white_area = GoEnv.gogame.get_areas(self.state)
-        area_difference = black_area - white_area
 
         if self.game_ended:
-            if area_difference > 0:
-                return 1
-            elif area_difference == 0:
-                return 0.5
-            else:
-                assert area_difference < 0
-                return 0
+            self.get_winning()
         else:
             return 0
 
