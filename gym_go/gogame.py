@@ -1,8 +1,10 @@
-import numpy as np
 import itertools
-from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL
-from gym_go import state_utils
+
+import numpy as np
 from sklearn import preprocessing
+
+from gym_go import state_utils
+from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL
 
 """
 The state of the game is a numpy array
@@ -149,6 +151,8 @@ class GoGame:
     @staticmethod
     def get_valid_moves(state):
         # return a fixed size binary vector
+        if GoGame.get_game_ended(state):
+            return np.zeros(GoGame.get_action_size(state))
         return np.append(1 - state[INVD_CHNL].flatten(), 1)
 
     @staticmethod
@@ -193,7 +197,7 @@ class GoGame:
         return black_area, white_area
 
     @staticmethod
-    def get_canonical_form(state, player):
+    def get_canonical_form(state):
         """
         The returned state is a seperate copy of the given state
         :param state:
@@ -201,6 +205,8 @@ class GoGame:
         :return:
         """
         state = np.copy(state)
+
+        player = GoGame.get_turn(state)
         if player == BLACK:
             return state
         else:
@@ -220,7 +226,7 @@ class GoGame:
         :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
         :return:
         """
-        orientation = np.random.randint(0,8)
+        orientation = np.random.randint(0, 8)
 
         if (orientation >> 0) % 2:
             # Horizontal flip

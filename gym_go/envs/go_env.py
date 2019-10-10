@@ -103,7 +103,7 @@ class GoEnv(gym.Env):
         }
 
     def get_canonical_state(self):
-        return GoEnv.gogame.get_canonical_form(self.state, self.turn())
+        return GoEnv.gogame.get_canonical_form(self.state)
 
     def get_state(self):
         """
