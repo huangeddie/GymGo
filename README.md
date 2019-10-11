@@ -83,10 +83,12 @@ A game ends when both players pass consecutively
 
 # Reward Methods
 Reward methods are in _black_'s perspective
-* **Real**: 
-  * `-1` - White won
-  * `0` - Game is ongoing, or game is tied
-  * `1` - Black won
+* **Real**:
+  * If game ended:
+    * `0` - White won
+    * `0` - Game is tied
+    * `1` - Black won
+  * `0` - Otherwise
 * **Heuristic**: If the game is ongoing, the reward is `black area - white area`. 
 If black won, the reward is `BOARD_SIZE**2`. 
 If white won or tied, the reward is `-BOARD_SIZE**2`.
