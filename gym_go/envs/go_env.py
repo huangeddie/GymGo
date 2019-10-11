@@ -31,7 +31,7 @@ class GoEnv(gym.Env):
         '''
         self.size = size
         if state is None:
-            self.state = GoEnv.gogame.get_init_board(size, black_first)
+            self.state = GoGame.get_init_board(size, black_first)
         else:
             assert state.shape[1] == size
             self.state = np.copy(state)
@@ -43,20 +43,20 @@ class GoEnv(gym.Env):
         done, return state
         '''
         if state is None:
-            self.state = GoEnv.gogame.get_init_board(self.size, black_first)
+            self.state = GoGame.get_init_board(self.size, black_first)
         else:
             assert state.shape[1] == self.size
             self.state = np.copy(state)
         return np.copy(self.state)
 
     def prev_player_passed(self):
-        return GoEnv.gogame.get_prev_player_passed(self.state)
+        return GoGame.get_prev_player_passed(self.state)
 
     def turn(self):
-        return GoEnv.gogame.get_turn(self.state)
+        return GoGame.get_turn(self.state)
 
     def game_ended(self):
-        return GoEnv.gogame.get_game_ended(self.state)
+        return GoGame.get_game_ended(self.state)
 
     def action_2d_to_1d(self, action_2d):
         if action_2d is None:
@@ -84,17 +84,17 @@ class GoEnv(gym.Env):
             assert action[0] >= 0 and action[1] >= 0
             assert action[0] < self.size and action[1] < self.size
             action = action[0] * self.size + action[1]
-        self.state = GoEnv.gogame.get_next_state(self.state, action)
-        return np.copy(self.state), self.get_reward(), GoEnv.gogame.get_game_ended(self.state), self.get_info()
+        self.state = GoGame.get_next_state(self.state, action)
+        return np.copy(self.state), self.get_reward(), GoGame.get_game_ended(self.state), self.get_info()
 
     def get_info(self):
         """
         :return: Debugging info for the state
         """
-        black_area, white_area = GoEnv.gogame.get_areas(self.state)
+        black_area, white_area = GoGame.get_areas(self.state)
         return {
-            'prev_player_passed': GoEnv.gogame.get_prev_player_passed(self.state),
-            'turn': 'b' if GoEnv.gogame.get_turn(self.state) == GoEnv.govars.BLACK else 'w',
+            'prev_player_passed': GoGame.get_prev_player_passed(self.state),
+            'turn': 'b' if GoGame.get_turn(self.state) == GoEnv.govars.BLACK else 'w',
             'area': {
                 'w': white_area,
                 'b': black_area,
@@ -103,7 +103,7 @@ class GoEnv(gym.Env):
         }
 
     def get_canonical_state(self):
-        return GoEnv.gogame.get_canonical_form(self.state)
+        return GoGame.get_canonical_form(self.state)
 
     def get_state(self):
         """
@@ -115,7 +115,7 @@ class GoEnv(gym.Env):
         """
         :return: Who's currently winning, regardless if the game is over
         """
-        black_area, white_area = GoEnv.gogame.get_areas(self.state)
+        black_area, white_area = GoGame.get_areas(self.state)
         area_difference = black_area - white_area
 
         if area_difference > 0:
@@ -147,7 +147,7 @@ class GoEnv(gym.Env):
             Also known as Trump Taylor Scoring
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
         '''
-        black_area, white_area = GoEnv.gogame.get_areas(self.state)
+        black_area, white_area = GoGame.get_areas(self.state)
         area_difference = black_area - white_area
 
         if self.reward_method == RewardMethod.REAL:
@@ -162,7 +162,7 @@ class GoEnv(gym.Env):
 
     @property
     def action_space(self):
-        return GoEnv.gogame.get_action_size(self.state)
+        return GoGame.get_action_size(self.state)
 
     def __str__(self):
         return GoGame.str(self.state)
