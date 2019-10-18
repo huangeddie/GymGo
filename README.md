@@ -86,7 +86,7 @@ Reward methods are in _black_'s perspective
 * **Real**:
   * If game ended:
     * `0` - White won
-    * `0` - Game is tied
+    * `0.5` - Game is tied
     * `1` - Black won
   * `0` - Otherwise
 * **Heuristic**: If the game is ongoing, the reward is `black area - white area`. 
