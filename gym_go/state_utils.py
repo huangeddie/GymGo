@@ -42,7 +42,7 @@ def get_group(state, player, loc):
     m, n = get_board_size(state)
     visited = np.zeros((m, n), dtype=np.bool)
     group = Group()
-    q = queue.SimpleQueue()
+    q = queue.Queue()
 
     # Mark location as visited
     visited[loc] = True
@@ -106,7 +106,7 @@ def explore_territory(state, location, visited):
     visited[location] = True
 
     # Frontier
-    q = queue.SimpleQueue()
+    q = queue.Queue()
     q.put(location)
 
     teri_size = 1
