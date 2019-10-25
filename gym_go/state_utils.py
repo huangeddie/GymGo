@@ -1,10 +1,13 @@
 import itertools
+import queue
+
 import numpy as np
 from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
 
 """
 All set operations are in-place operations
 """
+
 
 def get_adjacent_groups(state, location):
     """
@@ -28,35 +31,37 @@ def get_adjacent_groups(state, location):
     return our_groups, opponent_groups
 
 
-def get_group(state, player, location):
+def get_group(state, player, loc):
     """
     Returns the group containing the location or None if location is empty there
     """
 
-    def calculate_group_helper(group, turn, location, visited):
-        # Mark location as visited
-        visited[location] = True
-
-        if state[turn][location] > 0:
-            # Part of group
-            group.locations.add(location)
-            # Now search for neighbors
-            adjacent_locations = get_adjacent_locations(state, location)
-            for loc in adjacent_locations:
-                if not visited[loc]:
-                    calculate_group_helper(group, turn, loc, visited)
-        elif state[1 - turn][location] <= 0:
-            # Part of liberty
-            group.liberties.add(location)
-
-    if state[player][location] <= 0:
+    if state[player][loc] <= 0:
         return None
 
     m, n = get_board_size(state)
     visited = np.zeros((m, n), dtype=np.bool)
     group = Group()
+    q = queue.SimpleQueue()
 
-    calculate_group_helper(group, player, location, visited)
+    # Mark location as visited
+    visited[loc] = True
+    q.put(loc)
+
+    while not q.empty():
+        loc = q.get()
+        if state[player][loc] > 0:
+            # Part of group
+            group.locations.add(loc)
+            # Now search for neighbors
+            adj_locs = get_adjacent_locations(state, loc)
+            for neighbor in adj_locs:
+                if not visited[neighbor]:
+                    visited[neighbor] = True
+                    q.put(neighbor)
+        elif state[1 - player][loc] <= 0:
+            # Part of liberty
+            group.liberties.add(loc)
 
     return group
 
@@ -96,31 +101,32 @@ def explore_territory(state, location, visited):
     :return: PLAYER, TERRITORY SIZE
     PLAYER may be 0 - BLACK, 1 - WHITE or None - NO PLAYER
     """
-    # base case: already visited
-    if visited[location]:
-        return ANYONE, 0
-
-    # base case: this is a piece
-    if state[0][location] > 0:
-        return BLACK, 0
-    elif state[1][location] > 0:
-        return WHITE, 0
 
     # mark this as visited
     visited[location] = True
 
+    # Frontier
+    q = queue.SimpleQueue()
+    q.put(location)
+
     teri_size = 1
     possible_owner = set()
 
-    # explore in all directions
-    adj_locs = get_adjacent_locations(state, location)
-    for adj_loc in adj_locs:
-        # get the expanded area and player that it belongs to
-        player, area = explore_territory(state, adj_loc, visited)
+    while not q.empty():
+        location = q.get()
+        adj_locs = get_adjacent_locations(state, location)
+        for adj_loc in adj_locs:
+            if visited[adj_loc]:
+                continue
 
-        # add area to territory size, player to a list
-        teri_size += area
-        possible_owner.add(player)
+            if state[0][adj_loc] > 0:
+                possible_owner.add(BLACK)
+            elif state[1][adj_loc] > 0:
+                possible_owner.add(WHITE)
+            else:
+                visited[adj_loc] = True
+                q.put(adj_loc)
+                teri_size += 1
 
     # filter out ANYONE, and get unique players
     if ANYONE in possible_owner:
@@ -242,6 +248,7 @@ def get_turn(state):
         return BLACK
     else:
         return WHITE
+
 
 def set_game_ended(state):
     """

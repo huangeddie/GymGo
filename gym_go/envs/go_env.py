@@ -91,14 +91,9 @@ class GoEnv(gym.Env):
         """
         :return: Debugging info for the state
         """
-        black_area, white_area = GoGame.get_areas(self.state)
         return {
             'prev_player_passed': GoGame.get_prev_player_passed(self.state),
             'turn': 'b' if GoGame.get_turn(self.state) == GoEnv.govars.BLACK else 'w',
-            'area': {
-                'w': white_area,
-                'b': black_area,
-            },
             'game_ended': GoGame.get_game_ended(self.state)
         }
 
@@ -147,13 +142,12 @@ class GoEnv(gym.Env):
             Also known as Trump Taylor Scoring
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
         '''
-        black_area, white_area = GoGame.get_areas(self.state)
-        area_difference = black_area - white_area
-
         if self.reward_method == RewardMethod.REAL:
             return self.get_winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
+            black_area, white_area = GoGame.get_areas(self.state)
+            area_difference = black_area - white_area
             if self.game_ended():
                 return (1 if area_difference > 0 else -1) * self.size ** 2
             return area_difference
@@ -213,7 +207,7 @@ class GoEnv(gym.Env):
                 rendering.draw_grid(batch, delta, self.size, lower_grid_coord, upper_grid_coord)
 
                 # info on top of the board
-                rendering.draw_info(batch, window_width, window_height, upper_grid_coord, self.get_info())
+                rendering.draw_info(batch, window_width, window_height, upper_grid_coord, self.state)
 
                 # Inform user what they can do
                 rendering.draw_command_labels(batch, window_width, window_height)
