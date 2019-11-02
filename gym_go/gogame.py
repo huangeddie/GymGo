@@ -123,9 +123,9 @@ class GoGame:
     @staticmethod
     def get_action_size(state=None, board_size: int = None):
         # return number of actions
-        if state:
+        if state is not None:
             m, n = state_utils.get_board_size(state)
-        elif board_size:
+        elif board_size is not None:
             m, n = board_size, board_size
         else:
             raise RuntimeError('No argument passed')
