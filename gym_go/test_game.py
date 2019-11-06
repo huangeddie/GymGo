@@ -1,8 +1,10 @@
+import random
 import unittest
+
 import gym
 import numpy as np
-import random
-from gym_go.govars import BLACK, WHITE, INVD_CHNL, TURN_CHNL, PASS_CHNL, DONE_CHNL
+
+from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL
 
 
 class TestGoEnv(unittest.TestCase):
@@ -640,11 +642,28 @@ class TestGoEnv(unittest.TestCase):
 
             env.close()
 
-    def test_invalid_env_arguments(self):
-        with self.assertRaises(Exception):
-            _ = gym.make('gym_go:go-v0', reward_method='foo')
-        with self.assertRaises(Exception):
-            _ = gym.make('gym_go:go-v0', size='bar')
+    def test_num_liberties(self):
+        env = gym.make('gym_go:go-v0', size=7)
+
+        steps = [(0, 0), (0, 1)]
+        libs = [(2, 0), (1, 2)]
+
+        env.reset()
+        for step, libs in zip(steps, libs):
+            state, _, _, _ = env.step(step)
+            blacklibs, whitelibs = env.gogame.get_num_liberties(state)
+            self.assertEqual(blacklibs, libs[0], state)
+            self.assertEqual(whitelibs, libs[1], state)
+
+        steps = [(2, 1), None, (1, 2), None, (2, 3), None, (3, 2), None]
+        libs = [(4, 0), (4, 0),(6, 0), (6, 0), (8, 0), (8, 0), (9, 0), (9, 0)]
+
+        env.reset()
+        for step, libs in zip(steps, libs):
+            state, _, _, _ = env.step(step)
+            blacklibs, whitelibs = env.gogame.get_num_liberties(state)
+            self.assertEqual(blacklibs, libs[0], state)
+            self.assertEqual(whitelibs, libs[1], state)
 
 
 if __name__ == '__main__':

@@ -170,6 +170,33 @@ class GoGame:
         return action_1d
 
     @staticmethod
+    def get_num_liberties(state: np.ndarray):
+        '''
+        :param state:
+        :return: Total black and white liberties
+        '''
+        blacks = state[BLACK]
+        whites = state[WHITE]
+        all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+
+        num_liberties = []
+        for player_pieces in [blacks, whites]:
+            liberties = np.zeros(player_pieces.shape)
+            for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
+                neighbors = np.roll(player_pieces, shift, axis=axis)
+                pad_idx = 0 if shift == 1 else -1
+                if axis == 0:
+                    neighbors[pad_idx, :] = 0
+                else:
+                    neighbors[:, pad_idx] = 0
+
+                liberties += neighbors
+            liberties *= 1 - all_pieces
+            num_liberties.append(np.sum(liberties > 0))
+
+        return num_liberties[0], num_liberties[1]
+
+    @staticmethod
     def get_areas(state):
         '''
         Return black area, white area
