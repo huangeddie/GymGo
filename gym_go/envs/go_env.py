@@ -37,6 +37,7 @@ class GoEnv(gym.Env):
             self.state = np.copy(state)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(0,6, shape=(6,size,size))
+        self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
 
     def reset(self, black_first=True, state=None):
         '''
@@ -155,10 +156,6 @@ class GoEnv(gym.Env):
         else:
             raise Exception("Unknown Reward Method")
 
-    @property
-    def action_space(self):
-        return GoGame.get_action_size(self.state)
-        
     def __str__(self):
         return GoGame.str(self.state)
 
