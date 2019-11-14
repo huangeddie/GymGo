@@ -91,7 +91,8 @@ Reward methods are in _black_'s perspective
   * `0` - Otherwise
 * **Heuristic**: If the game is ongoing, the reward is `black area - white area`. 
 If black won, the reward is `BOARD_SIZE**2`. 
-If white won or tied, the reward is `-BOARD_SIZE**2`.
+If white won, the reward is `-BOARD_SIZE**2`.
+If tied, the reward is `0`.
 
 # State
 The `state` object that is returned by the `reset` and `step` functions of the environment is a 
