@@ -118,10 +118,10 @@ class GoEnv(gym.Env):
         if area_difference > 0:
             return 1
         elif area_difference == 0:
-            return 0.5
+            return 0
         else:
             assert area_difference < 0
-            return 0
+            return -1
 
     def get_winner(self):
         """

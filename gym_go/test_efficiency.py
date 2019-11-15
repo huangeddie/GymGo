@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 class Efficiency(unittest.TestCase):
-    boardsize = 19
+    boardsize = 9
     iterations = 64
 
     def setUp(self) -> None:
