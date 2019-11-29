@@ -31,16 +31,20 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_children(state):
+    def get_children(state, group_map=None):
+        if group_map is None:
+            group_map = state_utils.get_all_groups(state)
+
         children = []
-        group_map = state_utils.get_all_groups(state)
+        children_groupmaps = []
 
         valid_moves = GoGame.get_valid_moves(state)
         valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
         for move in valid_move_idcs:
-            next_state, _ = GoGame.get_next_state(state, move, group_map)
+            next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
             children.append(next_state)
-        return children
+            children_groupmaps.append(child_groupmap)
+        return children, children_groupmaps
 
     @staticmethod
     def get_next_state(state, action, group_map=None):
@@ -103,7 +107,7 @@ class GoGame:
         for group in adj_opp_groups:
             empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
             if len(group.liberties) <= 1:
-                assert action in group.liberties, (action, group.liberties)
+                assert action in group.liberties, (action, group, state[[BLACK, WHITE, INVD_CHNL]])
                 # Killed group
                 killed = True
 
@@ -116,7 +120,7 @@ class GoGame:
                     if killed_single_piece is not None:
                         killed_single_piece = None
                     else:
-                        killed_single_piece = group.locations.pop()
+                        killed_single_piece = next(iter(group.locations))
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
@@ -131,9 +135,14 @@ class GoGame:
             group_map = state_utils.get_all_groups(state)
         else:
             group_map = group_map.copy()
+
             for opp_group in adj_opp_groups:
                 if action in opp_group.liberties:
+                    # New group copy
+                    opp_group = opp_group.copy()
                     opp_group.liberties.remove(action)
+                    for loc in opp_group.locations:
+                        group_map[loc] = opp_group
 
             merged_group = Group()
             merged_group.locations.add(action)
