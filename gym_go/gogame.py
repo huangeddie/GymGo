@@ -38,7 +38,7 @@ class GoGame:
         valid_moves = GoGame.get_valid_moves(state)
         valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
         for move in valid_move_idcs:
-            next_state = GoGame.get_next_state(state, move, group_map)
+            next_state, _ = GoGame.get_next_state(state, move, group_map)
             children.append(next_state)
         return children
 
@@ -76,7 +76,7 @@ class GoGame:
             state_utils.set_turn(state)
 
             # Return event
-            return state
+            return state, group_map
 
         player = state_utils.get_turn(state)
         m, n = state_utils.get_board_size(state)
@@ -103,7 +103,7 @@ class GoGame:
         for group in adj_opp_groups:
             empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
             if len(group.liberties) <= 1:
-                assert action in group.liberties
+                assert action in group.liberties, (action, group.liberties)
                 # Killed group
                 killed = True
 
@@ -159,7 +159,7 @@ class GoGame:
         # Switch turn
         state_utils.set_turn(state)
 
-        return state
+        return state, group_map
 
     @staticmethod
     def get_action_size(state=None, board_size: int = None):

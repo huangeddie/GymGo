@@ -38,6 +38,7 @@ class GoEnv(gym.Env):
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(0,6, shape=(6,size,size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
+        self.group_map = None
 
     def reset(self, black_first=True, state=None):
         '''
@@ -49,6 +50,8 @@ class GoEnv(gym.Env):
         else:
             assert state.shape[1] == self.size
             self.state = np.copy(state)
+
+        self.group_map = None
         return np.copy(self.state)
 
     def prev_player_passed(self):
@@ -86,7 +89,7 @@ class GoEnv(gym.Env):
             assert action[0] >= 0 and action[1] >= 0
             assert action[0] < self.size and action[1] < self.size
             action = action[0] * self.size + action[1]
-        self.state = GoGame.get_next_state(self.state, action)
+        self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
         return np.copy(self.state), self.get_reward(), GoGame.get_game_ended(self.state), self.get_info()
 
     def get_info(self):
