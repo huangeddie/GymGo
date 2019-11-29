@@ -1,10 +1,9 @@
 import itertools
 
 import numpy as np
-from sklearn import preprocessing
-
 from gym_go import state_utils
-from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL
+from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
+from sklearn import preprocessing
 
 """
 The state of the game is a numpy array
@@ -32,7 +31,19 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_next_state(state, action):
+    def get_children(state):
+        children = []
+        group_map = state_utils.get_all_groups(state)
+
+        valid_moves = GoGame.get_valid_moves(state)
+        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
+        for move in valid_move_idcs:
+            next_state = GoGame.get_next_state(state, move, group_map)
+            children.append(next_state)
+        return children
+
+    @staticmethod
+    def get_next_state(state, action, group_map=None):
         """
         Does not change the given state
         :param state:
@@ -46,6 +57,9 @@ class GoGame:
 
         state = np.copy(state)
 
+        if group_map is None:
+            group_map = state_utils.get_all_groups(state)
+
         # if the current player passes
         if action == GoGame.get_action_size(state) - 1:
             # if two consecutive passes, game is over
@@ -56,7 +70,7 @@ class GoGame:
 
             # Update invalid channel
             state_utils.reset_invalid_moves(state)
-            state_utils.add_invalid_moves(state)
+            state_utils.add_invalid_moves(state, group_map)
 
             # Switch turn
             state_utils.set_turn(state)
@@ -78,20 +92,23 @@ class GoGame:
 
         state_utils.reset_invalid_moves(state)
 
-        # Get all adjacent groups
-        _, opponent_groups = state_utils.get_adjacent_groups(state, action)
+        # Get all adjacent information
+        adjacent_locations = state_utils.get_adjacent_locations(state, action)
+        adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations, player)
 
         # Go through opponent groups
+        killed = False
         killed_single_piece = None
-        empty_adjacents_before_kill = state_utils.get_adjacent_locations(state, action)
-        for group in opponent_groups:
+        empty_adjacents_before_kill = adjacent_locations.copy()
+        for group in adj_opp_groups:
             empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
             if len(group.liberties) <= 1:
                 assert action in group.liberties
+                # Killed group
+                killed = True
 
                 # Remove group in board
                 for loc in group.locations:
-                    # TODO: Hardcoded other player. Make more generic
                     state[1 - player][loc] = 0
 
                 # Metric for ko-protection
@@ -109,8 +126,32 @@ class GoGame:
         # Add the piece!
         state[player][action] = 1
 
+        # Update group map since the state changed
+        if killed:
+            group_map = state_utils.get_all_groups(state)
+        else:
+            group_map = group_map.copy()
+            for opp_group in adj_opp_groups:
+                if action in opp_group.liberties:
+                    opp_group.liberties.remove(action)
+
+            merged_group = Group()
+            merged_group.locations.add(action)
+            for adj_loc in adjacent_locations:
+                if np.sum(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
+                    merged_group.liberties.add(adj_loc)
+
+            for own_group in adj_own_groups:
+                merged_group.locations.update(own_group.locations)
+                merged_group.liberties.update(own_group.liberties)
+            if action in merged_group.liberties:
+                merged_group.liberties.remove(action)
+
+            for loc in merged_group.locations:
+                group_map[loc] = merged_group
+
         # Update illegal moves
-        state_utils.add_invalid_moves(state)
+        state_utils.add_invalid_moves(state, group_map)
 
         # This move was not a pass
         state_utils.set_prev_player_passed(state, 0)
@@ -170,31 +211,12 @@ class GoGame:
         return action_1d
 
     @staticmethod
+    def get_liberties(state: np.ndarray):
+        return state_utils.get_liberties(state)
+
+    @staticmethod
     def get_num_liberties(state: np.ndarray):
-        '''
-        :param state:
-        :return: Total black and white liberties
-        '''
-        blacks = state[BLACK]
-        whites = state[WHITE]
-        all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
-
-        num_liberties = []
-        for player_pieces in [blacks, whites]:
-            liberties = np.zeros(player_pieces.shape)
-            for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
-                neighbors = np.roll(player_pieces, shift, axis=axis)
-                pad_idx = 0 if shift == 1 else -1
-                if axis == 0:
-                    neighbors[pad_idx, :] = 0
-                else:
-                    neighbors[:, pad_idx] = 0
-
-                liberties += neighbors
-            liberties *= 1 - all_pieces
-            num_liberties.append(np.sum(liberties > 0))
-
-        return num_liberties[0], num_liberties[1]
+        return state_utils.get_num_liberties(state)
 
     @staticmethod
     def get_areas(state):
@@ -204,21 +226,21 @@ class GoGame:
         '''
 
         m, n = state_utils.get_board_size(state)
-        visited = np.zeros((m, n), dtype=np.bool)
+        visited = set()
         black_area = 0
         white_area = 0
 
         # loop through each intersection on board
-        for r, c in itertools.product(range(m), range(n)):
+        for loc in itertools.product(range(m), range(n)):
             # count pieces towards area
-            if state[BLACK][r, c] > 0:
+            if state[BLACK][loc] > 0:
                 black_area += 1
-            elif state[WHITE][r, c] > 0:
+            elif state[WHITE][loc] > 0:
                 white_area += 1
 
             # do DFS on unvisited territory
-            elif not visited[r, c]:
-                player, area = state_utils.explore_territory(state, (r, c), visited)
+            elif loc not in visited:
+                player, area = state_utils.explore_territory(state, loc, visited)
 
                 # add area to corresponding player
                 if player == BLACK:  # BLACK

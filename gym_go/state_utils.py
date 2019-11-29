@@ -1,4 +1,3 @@
-import itertools
 import queue
 
 import numpy as np
@@ -9,26 +8,28 @@ All set operations are in-place operations
 """
 
 
-def get_adjacent_groups(state, location):
-    """
-    Returns (turn's groups, other turn's groups)
-    """
-    our_groups = []
-    opponent_groups = []
+def get_all_groups(state: np.ndarray):
+    all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+    frontier = set()
+    for loc in np.argwhere(all_pieces > 0):
+        frontier.add(tuple(loc))
+    group_map = {}
+    while len(frontier) > 0:
+        start = frontier.pop()
+        if state[BLACK][start] > 0:
+            player = BLACK
+        else:
+            player = WHITE
+        group = get_group(state, player, start)
 
-    player = get_turn(state)
+        # Update frontier
+        frontier.difference_update(group.locations)
 
-    adjacent_locations = get_adjacent_locations(state, location)
-    for loc in adjacent_locations:
-        our_group = get_group(state, player, loc)
-        opponent_group = get_group(state, 1 - player, loc)
+        # Update group mapping
+        for loc in group.locations:
+            group_map[loc] = group
 
-        if our_group is not None:
-            our_groups.append(our_group)
-        if opponent_group is not None:
-            opponent_groups.append(opponent_group)
-
-    return our_groups, opponent_groups
+    return group_map
 
 
 def get_group(state, player, loc):
@@ -36,16 +37,14 @@ def get_group(state, player, loc):
     Returns the group containing the location or None if location is empty there
     """
 
-    if state[player][loc] <= 0:
-        return None
+    assert state[player][loc] == 1
 
-    m, n = get_board_size(state)
-    visited = np.zeros((m, n), dtype=np.bool)
+    visited = set()
     group = Group()
     q = queue.Queue()
 
     # Mark location as visited
-    visited[loc] = True
+    visited.add(loc)
     q.put(loc)
 
     while not q.empty():
@@ -56,14 +55,49 @@ def get_group(state, player, loc):
             # Now search for neighbors
             adj_locs = get_adjacent_locations(state, loc)
             for neighbor in adj_locs:
-                if not visited[neighbor]:
-                    visited[neighbor] = True
+                if neighbor not in visited:
+                    visited.add(neighbor)
                     q.put(neighbor)
         elif state[1 - player][loc] <= 0:
             # Part of liberty
             group.liberties.add(loc)
 
     return group
+
+
+def get_liberties(state: np.ndarray):
+    blacks = state[BLACK]
+    whites = state[WHITE]
+    all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+
+    liberty_list = []
+    for player_pieces in [blacks, whites]:
+        liberties = np.zeros(player_pieces.shape)
+        for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
+            neighbors = np.roll(player_pieces, shift, axis=axis)
+            pad_idx = 0 if shift == 1 else -1
+            if axis == 0:
+                neighbors[pad_idx, :] = 0
+            else:
+                neighbors[:, pad_idx] = 0
+
+            liberties += neighbors
+        liberties *= 1 - all_pieces
+        liberty_list.append(liberties)
+
+    return liberty_list[0], liberty_list[1]
+
+
+def get_num_liberties(state: np.ndarray):
+    '''
+    :param state:
+    :return: Total black and white liberties
+    '''
+    black_liberties, white_liberties = get_liberties(state)
+    black_liberties = np.count_nonzero(black_liberties)
+    white_liberties = np.count_nonzero(white_liberties)
+
+    return black_liberties, white_liberties
 
 
 def is_within_bounds(state, location):
@@ -90,33 +124,33 @@ def get_adjacent_locations(state, location):
     return adjacent_locations
 
 
-def explore_territory(state, location, visited):
+def explore_territory(state, loc, visited: set):
     """
     Return which player this territory belongs to (can be None).
     Will visit all empty intersections connected to
     the initial location.
     :param state:
-    :param location:
+    :param loc:
     :param visited:
     :return: PLAYER, TERRITORY SIZE
     PLAYER may be 0 - BLACK, 1 - WHITE or None - NO PLAYER
     """
 
     # mark this as visited
-    visited[location] = True
+    visited.add(loc)
 
     # Frontier
     q = queue.Queue()
-    q.put(location)
+    q.put(loc)
 
     teri_size = 1
     possible_owner = set()
 
     while not q.empty():
-        location = q.get()
-        adj_locs = get_adjacent_locations(state, location)
+        loc = q.get()
+        adj_locs = get_adjacent_locations(state, loc)
         for adj_loc in adj_locs:
-            if visited[adj_loc]:
+            if adj_loc in visited:
                 continue
 
             if state[0][adj_loc] > 0:
@@ -124,7 +158,7 @@ def explore_territory(state, location, visited):
             elif state[1][adj_loc] > 0:
                 possible_owner.add(WHITE)
             else:
-                visited[adj_loc] = True
+                visited.add(adj_loc)
                 q.put(adj_loc)
                 teri_size += 1
 
@@ -155,7 +189,7 @@ def reset_invalid_moves(state):
     state[INVD_CHNL] = 0
 
 
-def add_invalid_moves(state):
+def add_invalid_moves(state, group_map):
     """
     Assumes ko-protection is taken care of previously
     Updates invalid moves in the OPPONENT's perspective
@@ -174,17 +208,24 @@ def add_invalid_moves(state):
     # Occupied/ko-protection
     state[INVD_CHNL] = np.sum(state[[BLACK, WHITE, INVD_CHNL]], axis=0)
 
-    m, n = get_board_size(state)
+    our_liberties, opp_liberties = get_liberties(state)
+    all_liberties = our_liberties + opp_liberties
+    possible_invalids = np.argwhere(all_liberties > 0)
 
-    for i, j in itertools.product(range(m), range(n)):
-        if state[INVD_CHNL][i, j] >= 1:  # Occupied/ko invalidness already taken care of
+    player = get_turn(state)
+
+    for loc in possible_invalids:
+        loc = tuple(loc)
+        if state[INVD_CHNL][loc] >= 1:  # Occupied/ko invalidness already taken care of
             continue
 
-        our_groups, opponent_groups = get_adjacent_groups(state, (i, j))
+        adjacent_locations = get_adjacent_locations(state, loc)
+
+        adj_own_groups, adj_opp_groups = get_adjacent_groups(state, group_map, adjacent_locations, player)
 
         # Check whether we can kill
         can_kill = False
-        for group in our_groups:
+        for group in adj_own_groups:
             if len(group.liberties) <= 1:
                 can_kill = True
                 break
@@ -197,13 +238,12 @@ def add_invalid_moves(state):
         group_with_one_liberty_exists = False
         group_with_multiple_liberties_exists = False
         completely_surrounded = True
-        adjacent_locations = get_adjacent_locations(state, (i, j))
-        for loc in adjacent_locations:
-            if np.sum(state[[BLACK, WHITE], loc[0], loc[1]]) <= 0:
+        for adj_loc in adjacent_locations:
+            if np.sum(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) <= 0:
                 completely_surrounded = False
                 break
         if completely_surrounded:
-            for group in opponent_groups:
+            for group in adj_opp_groups:
                 if len(group.liberties) <= 1:
                     group_with_one_liberty_exists = True
                 else:
@@ -212,24 +252,37 @@ def add_invalid_moves(state):
                     break
 
             if group_with_one_liberty_exists and not group_with_multiple_liberties_exists:
-                state[INVD_CHNL][i, j] = 1
+                state[INVD_CHNL][loc] = 1
 
-        if state[INVD_CHNL][i, j] >= 1:
+        if state[INVD_CHNL][loc] >= 1:
             # Already determined as invalid
             continue
 
-        # Check if surrounded and cannot kill
-        empty_adjacent_locations = get_adjacent_locations(state, (i, j))
+        # Check if surrounded and whether or not we can kill
+        empty_adjacent_locations = adjacent_locations.copy()
         can_kill = False
-        for group in our_groups:
+        for group in adj_own_groups:
             empty_adjacent_locations = empty_adjacent_locations - group.locations
             if len(group.liberties) <= 1:
                 can_kill = True
                 break
 
-        # Check if surrounded and cannot kill
         if len(empty_adjacent_locations) <= 0 and not can_kill:
-            state[INVD_CHNL][i, j] = 1
+            # Surrounded and cannot kill
+            state[INVD_CHNL][loc] = 1
+
+
+def get_adjacent_groups(state, group_map, adjacent_locations, player):
+    our_groups, opponent_groups = [], []
+    for adj_loc in adjacent_locations:
+        if adj_loc not in group_map.keys():
+            continue
+        group = group_map[adj_loc]
+        if state[player][adj_loc] > 0:
+            our_groups.append(group)
+        else:
+            opponent_groups.append(group)
+    return our_groups, opponent_groups
 
 
 def get_board_size(state):

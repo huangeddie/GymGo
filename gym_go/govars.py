@@ -15,3 +15,9 @@ class Group:
     def __init__(self):
         self.locations = set()
         self.liberties = set()
+
+    def __str__(self):
+        return f'{self.locations}LOC {self.liberties}LIB'
+
+    def __repr__(self):
+        return self.__str__()
