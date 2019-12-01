@@ -44,7 +44,14 @@ class GoGame:
             next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
             children.append(next_state)
             children_groupmaps.append(child_groupmap)
+        children = np.array(children)
         return children, children_groupmaps
+
+    @staticmethod
+    def get_canonical_children(state, group_map=None):
+        children, child_group_maps = GoGame.get_children(state, group_map)
+        canonical_children = np.array(list(map(lambda child: GoGame.get_canonical_form(child), children)))
+        return canonical_children, child_group_maps
 
     @staticmethod
     def get_next_state(state, action, group_map=None):

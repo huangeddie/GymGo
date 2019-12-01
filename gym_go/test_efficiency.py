@@ -18,7 +18,7 @@ class Efficiency(unittest.TestCase):
         for _ in tqdm(range(self.iterations)):
             start = time.time()
             self.env.reset()
-            for a in range(self.boardsize):
+            for a in range(self.boardsize**2 - 2):
                 self.env.step(a)
             end = time.time()
 

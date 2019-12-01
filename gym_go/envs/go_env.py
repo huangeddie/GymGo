@@ -36,7 +36,7 @@ class GoEnv(gym.Env):
             assert state.shape[1] == size
             self.state = np.copy(state)
         self.reward_method = RewardMethod(reward_method)
-        self.observation_space = gym.spaces.Box(0,6, shape=(6,size,size))
+        self.observation_space = gym.spaces.Box(0, 6, shape=(6, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
         self.group_map = None
 
@@ -54,30 +54,6 @@ class GoEnv(gym.Env):
         self.group_map = None
         return np.copy(self.state)
 
-    def prev_player_passed(self):
-        return GoGame.get_prev_player_passed(self.state)
-
-    def turn(self):
-        return GoGame.get_turn(self.state)
-
-    def game_ended(self):
-        return GoGame.get_game_ended(self.state)
-
-    def action_2d_to_1d(self, action_2d):
-        if action_2d is None:
-            action_1d = self.size ** 2
-        else:
-            action_1d = action_2d[0] * self.size + action_2d[1]
-        return action_1d
-
-    def get_valid_moves(self):
-        return GoGame.get_valid_moves(self.state)
-
-    def uniform_random_action(self):
-        valid_moves = self.get_valid_moves()
-        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
-        return np.random.choice(valid_move_idcs)
-
     def step(self, action):
         '''
         Assumes the correct player is making a move. Black goes first.
@@ -92,6 +68,30 @@ class GoEnv(gym.Env):
         self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
         return np.copy(self.state), self.get_reward(), GoGame.get_game_ended(self.state), self.get_info()
 
+    def game_ended(self):
+        return GoGame.get_game_ended(self.state)
+
+    def turn(self):
+        return GoGame.get_turn(self.state)
+
+    def prev_player_passed(self):
+        return GoGame.get_prev_player_passed(self.state)
+
+    def get_valid_moves(self):
+        return GoGame.get_valid_moves(self.state)
+
+    def action_2d_to_1d(self, action_2d):
+        if action_2d is None:
+            action_1d = self.size ** 2
+        else:
+            action_1d = action_2d[0] * self.size + action_2d[1]
+        return action_1d
+
+    def uniform_random_action(self):
+        valid_moves = self.get_valid_moves()
+        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
+        return np.random.choice(valid_move_idcs)
+
     def get_info(self):
         """
         :return: Debugging info for the state
@@ -102,18 +102,33 @@ class GoEnv(gym.Env):
             'game_ended': GoGame.get_game_ended(self.state)
         }
 
-    def get_canonical_state(self):
-        return GoGame.get_canonical_form(self.state)
-
     def get_state(self):
         """
-        Returns deep copy of state
+        :return: copy of state
         """
         return np.copy(self.state)
 
+    def get_canonical_state(self):
+        """
+        :return: canonical copy of state
+        """
+        return GoGame.get_canonical_form(self.state)
+
+    def get_children(self):
+        """
+        :return: (list of child states in order of valid moves, corresponding list of group maps for each child)
+        """
+        return GoGame.get_children(self.state, self.group_map)
+
+    def get_canonical_children(self):
+        """
+        :return: Same as get_children, but in canonical form
+        """
+        return GoGame.get_canonical_children(self.state, self.group_map)
+
     def get_winning(self):
         """
-        :return: Who's currently winning, regardless if the game is over
+        :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
         black_area, white_area = GoGame.get_areas(self.state)
         area_difference = black_area - white_area
