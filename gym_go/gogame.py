@@ -144,12 +144,12 @@ class GoGame:
             group_map = group_map.copy()
 
             for opp_group in adj_opp_groups:
-                if action in opp_group.liberties:
-                    # New group copy
-                    opp_group = opp_group.copy()
-                    opp_group.liberties.remove(action)
-                    for loc in opp_group.locations:
-                        group_map[loc] = opp_group
+                assert action in opp_group.liberties
+                # New group copy
+                opp_group = opp_group.copy()
+                opp_group.liberties.remove(action)
+                for loc in opp_group.locations:
+                    group_map[loc] = opp_group
 
             merged_group = Group()
             merged_group.locations.add(action)

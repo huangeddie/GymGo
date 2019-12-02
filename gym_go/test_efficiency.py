@@ -38,6 +38,7 @@ class Efficiency(unittest.TestCase):
             max_steps = self.boardsize**2
             for s in range(max_steps):
                 valid_moves = self.env.get_valid_moves()
+                # self.env.get_canonical_children()
                 # Do not pass if possible
                 if np.sum(valid_moves) > 1:
                     valid_moves[-1] = 0
