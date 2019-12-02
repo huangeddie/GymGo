@@ -109,7 +109,7 @@ class GoGame:
 
         # Go through opponent groups
         killed = False
-        killed_single_piece = None
+        single_kill = None
         empty_adjacents_before_kill = adjacent_locations.copy()
         for group in adj_opp_groups:
             empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
@@ -119,23 +119,23 @@ class GoGame:
                 killed = True
 
                 # Remove group in board
-                for loc in group.locations:
-                    state[1 - player][loc] = 0
+                group_locs = list(zip(*group.locations))
+                state[1 - player, group_locs[0], group_locs[1]] = 0
 
                 # Metric for ko-protection
                 if len(group.locations) <= 1:
-                    if killed_single_piece is not None:
-                        killed_single_piece = None
+                    if single_kill is not None:
+                        single_kill = None
                     else:
-                        killed_single_piece = next(iter(group.locations))
+                        single_kill = next(iter(group.locations))
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
-        if killed_single_piece is not None and len(empty_adjacents_before_kill) <= 0:
-            state[INVD_CHNL][killed_single_piece] = 1
+        if single_kill is not None and len(empty_adjacents_before_kill) <= 0:
+            state[INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Add the piece!
-        state[player][action] = 1
+        state[player, action[0], action[1]] = 1
 
         # Update group map since the state changed
         if killed:
@@ -154,7 +154,7 @@ class GoGame:
             merged_group = Group()
             merged_group.locations.add(action)
             for adj_loc in adjacent_locations:
-                if np.sum(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
+                if np.count_nonzero(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
                     merged_group.liberties.add(adj_loc)
 
             for own_group in adj_own_groups:

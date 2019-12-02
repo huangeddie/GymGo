@@ -18,7 +18,7 @@ class Efficiency(unittest.TestCase):
         for _ in tqdm(range(self.iterations)):
             start = time.time()
             self.env.reset()
-            for a in range(self.boardsize**2 - 2):
+            for a in range(self.boardsize ** 2 - 2):
                 self.env.step(a)
             end = time.time()
 
@@ -35,10 +35,10 @@ class Efficiency(unittest.TestCase):
             start = time.time()
             self.env.reset()
 
-            max_steps = self.boardsize**2
+            max_steps = self.boardsize ** 2
             for s in range(max_steps):
                 valid_moves = self.env.get_valid_moves()
-                # self.env.get_canonical_children()
+                self.env.get_canonical_children()
                 # Do not pass if possible
                 if np.sum(valid_moves) > 1:
                     valid_moves[-1] = 0
