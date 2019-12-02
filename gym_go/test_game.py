@@ -3,7 +3,6 @@ import unittest
 
 import gym
 import numpy as np
-
 from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL
 
 
@@ -32,8 +31,8 @@ class TestGoEnv(unittest.TestCase):
         :return:
         """
         next_state, reward, done, info = self.env.step((0, 0))
-        self.assertEqual(next_state[BLACK][0, 0], 1)
-        self.assertEqual(next_state[WHITE][0, 0], 0)
+        self.assertEqual(next_state[BLACK, 0, 0], 1)
+        self.assertEqual(next_state[WHITE, 0, 0], 0)
 
     def test_white_moves_first(self):
         """
@@ -42,8 +41,8 @@ class TestGoEnv(unittest.TestCase):
         """
         self.env.reset(black_first=False)
         next_state, reward, done, info = self.env.step((0, 0))
-        self.assertEqual(next_state[WHITE][0, 0], 1)
-        self.assertEqual(next_state[BLACK][0, 0], 0)
+        self.assertEqual(next_state[WHITE, 0, 0], 1)
+        self.assertEqual(next_state[BLACK, 0, 0], 0)
 
     def test_simple_valid_moves(self):
         """
@@ -205,7 +204,7 @@ class TestGoEnv(unittest.TestCase):
             # Assert that the invalid layer is correct
             self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 1)
             self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 1)
-            self.assertEqual(state[INVD_CHNL][row, col], 1)
+            self.assertEqual(state[INVD_CHNL, row, col], 1)
 
             with self.assertRaises(Exception):
                 self.env.step((row, col))
@@ -235,11 +234,11 @@ class TestGoEnv(unittest.TestCase):
         # Test invalid channel
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 8, state[INVD_CHNL])
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 8)
-        self.assertEqual(state[INVD_CHNL][1, 2], 1)
+        self.assertEqual(state[INVD_CHNL, 1, 2], 1)
 
         # Assert pieces channel is empty at ko-protection coordinate
-        self.assertEqual(state[BLACK][1, 2], 0)
-        self.assertEqual(state[WHITE][1, 2], 0)
+        self.assertEqual(state[BLACK, 1, 2], 0)
+        self.assertEqual(state[WHITE, 1, 2], 0)
 
         final_move = (1, 2)
         with self.assertRaises(Exception):
@@ -250,7 +249,7 @@ class TestGoEnv(unittest.TestCase):
         state, reward, done, info = self.env.step(None)
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 8)
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 8)
-        self.assertEqual(state[INVD_CHNL][1, 2], 0)
+        self.assertEqual(state[INVD_CHNL, 1, 2], 0)
 
     def test_invalid_ko_wall_protection_moves(self):
         """
@@ -277,11 +276,11 @@ class TestGoEnv(unittest.TestCase):
         # Test invalid channel
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 5, state[INVD_CHNL])
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 5)
-        self.assertEqual(state[INVD_CHNL][0, 0], 1)
+        self.assertEqual(state[INVD_CHNL, 0, 0], 1)
 
         # Assert pieces channel is empty at ko-protection coordinate
-        self.assertEqual(state[BLACK][0, 0], 0)
-        self.assertEqual(state[WHITE][0, 0], 0)
+        self.assertEqual(state[BLACK, 0, 0], 0)
+        self.assertEqual(state[WHITE, 0, 0], 0)
 
         final_move = (0, 0)
         with self.assertRaises(Exception):
@@ -292,7 +291,7 @@ class TestGoEnv(unittest.TestCase):
         state, reward, done, info = self.env.step(None)
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 5)
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 5)
-        self.assertEqual(state[INVD_CHNL][0, 0], 0)
+        self.assertEqual(state[INVD_CHNL, 0, 0], 0)
 
     def test_invalid_no_liberty_move(self):
         """
@@ -318,13 +317,13 @@ class TestGoEnv(unittest.TestCase):
         # Test invalid channel
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 9, state[INVD_CHNL])
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 9)
-        self.assertEqual(state[INVD_CHNL][1, 1], 1)
-        self.assertEqual(state[INVD_CHNL][0, 0], 1)
+        self.assertEqual(state[INVD_CHNL, 1, 1], 1)
+        self.assertEqual(state[INVD_CHNL, 0, 0], 1)
         # Assert empty space in pieces channels
-        self.assertEqual(state[BLACK][1, 1], 0)
-        self.assertEqual(state[WHITE][1, 1], 0)
-        self.assertEqual(state[BLACK][0, 0], 0)
-        self.assertEqual(state[WHITE][0, 0], 0)
+        self.assertEqual(state[BLACK, 1, 1], 0)
+        self.assertEqual(state[WHITE, 1, 1], 0)
+        self.assertEqual(state[BLACK, 0, 0], 0)
+        self.assertEqual(state[WHITE, 0, 0], 0)
 
         final_move = (1, 1)
         with self.assertRaises(Exception):
@@ -354,10 +353,10 @@ class TestGoEnv(unittest.TestCase):
         # Test invalid channel
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 6, state[INVD_CHNL])
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 6)
-        self.assertEqual(state[INVD_CHNL][0, 1], 0, state[INVD_CHNL])
+        self.assertEqual(state[INVD_CHNL, 0, 1], 0, state[INVD_CHNL])
         # Assert empty space in pieces channels
-        self.assertEqual(state[BLACK][0, 1], 0)
-        self.assertEqual(state[WHITE][0, 1], 0)
+        self.assertEqual(state[BLACK, 0, 1], 0)
+        self.assertEqual(state[WHITE, 0, 1], 0)
 
         final_move = (0, 1)
         state, reward, done, info = self.env.step(final_move)
@@ -470,8 +469,8 @@ class TestGoEnv(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[INVD_CHNL]), 8, state[INVD_CHNL])
         self.assertEqual(np.count_nonzero(state[INVD_CHNL] == 1), 8)
         # Assert empty space in pieces channels
-        self.assertEqual(state[BLACK][6, 1], 0)
-        self.assertEqual(state[WHITE][6, 1], 0)
+        self.assertEqual(state[BLACK, 6, 1], 0)
+        self.assertEqual(state[WHITE, 6, 1], 0)
 
         final_move = (6, 1)
         with self.assertRaises(Exception):
@@ -656,7 +655,7 @@ class TestGoEnv(unittest.TestCase):
             self.assertEqual(whitelibs, libs[1], state)
 
         steps = [(2, 1), None, (1, 2), None, (2, 3), None, (3, 2), None]
-        libs = [(4, 0), (4, 0),(6, 0), (6, 0), (8, 0), (8, 0), (9, 0), (9, 0)]
+        libs = [(4, 0), (4, 0), (6, 0), (6, 0), (8, 0), (8, 0), (9, 0), (9, 0)]
 
         env.reset()
         for step, libs in zip(steps, libs):

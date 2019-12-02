@@ -98,7 +98,7 @@ class GoGame:
         # Check move is valid
         if not state_utils.is_within_bounds(state, action):
             raise Exception("{} Not Within bounds".format(action))
-        elif state[INVD_CHNL][action] > 0:
+        elif state[INVD_CHNL, action[0], action[1]] > 0:
             raise Exception("Invalid Move", action, state)
 
         state_utils.reset_invalid_moves(state)
@@ -148,8 +148,8 @@ class GoGame:
                 # New group copy
                 opp_group = opp_group.copy()
                 opp_group.liberties.remove(action)
-                for loc in opp_group.locations:
-                    group_map[loc] = opp_group
+                locs = list(zip(*opp_group.locations))
+                group_map[locs[0], locs[1]] = opp_group
 
             merged_group = Group()
             merged_group.locations.add(action)
@@ -163,8 +163,8 @@ class GoGame:
             if action in merged_group.liberties:
                 merged_group.liberties.remove(action)
 
-            for loc in merged_group.locations:
-                group_map[loc] = merged_group
+            locs = list(zip(*merged_group.locations))
+            group_map[locs[0], locs[1]] = merged_group
 
         # Update illegal moves
         state_utils.add_invalid_moves(state, group_map)
@@ -249,9 +249,9 @@ class GoGame:
         # loop through each intersection on board
         for loc in itertools.product(range(m), range(n)):
             # count pieces towards area
-            if state[BLACK][loc] > 0:
+            if state[BLACK, loc[0], loc[1]] > 0:
                 black_area += 1
-            elif state[WHITE][loc] > 0:
+            elif state[WHITE, loc[0], loc[1]] > 0:
                 white_area += 1
 
             # do DFS on unvisited territory
@@ -369,11 +369,11 @@ class GoGame:
         for i in range(size):
             board_str += '{} |'.format(i)
             for j in range(size):
-                if state[0][i, j] == 1:
+                if state[0, i, j] == 1:
                     board_str += ' B'
-                elif state[1][i, j] == 1:
+                elif state[1, i, j] == 1:
                     board_str += ' W'
-                elif state[2][i, j] == 1:
+                elif state[2, i, j] == 1:
                     board_str += ' .'
                 else:
                     board_str += '  '

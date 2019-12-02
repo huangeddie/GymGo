@@ -2,6 +2,7 @@ import queue
 
 import numpy as np
 from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
+from scipy.ndimage import measurements
 
 """
 All set operations are in-place operations
@@ -9,60 +10,27 @@ All set operations are in-place operations
 
 
 def get_all_groups(state: np.ndarray):
+    group_map = np.empty(state.shape[1:], dtype=object)
     all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
-    frontier = set()
-    for loc in np.argwhere(all_pieces > 0):
-        frontier.add(tuple(loc))
-    group_map = {}
-    while len(frontier) > 0:
-        start = frontier.pop()
-        if state[BLACK][start] > 0:
-            player = BLACK
-        else:
-            player = WHITE
-        group = get_group(state, player, start)
+    for player in [BLACK, WHITE]:
+        pieces = state[player]
+        labels, num_groups = measurements.label(pieces)
+        for group_idx in range(1, num_groups + 1):
+            group = Group()
 
-        # Update frontier
-        frontier.difference_update(group.locations)
+            group_matrix = (labels == group_idx)
+            liberty_matrix = union_cardinal_shifts(group_matrix) * (1 - all_pieces)
+            liberties = np.argwhere(liberty_matrix)
+            for liberty in liberties:
+                group.liberties.add(tuple(liberty))
 
-        # Update group mapping
-        for loc in group.locations:
-            group_map[loc] = group
+            locations = np.argwhere(group_matrix)
+            for loc in locations:
+                loc = tuple(loc)
+                group.locations.add(loc)
+                group_map[loc] = group
 
     return group_map
-
-
-def get_group(state, player, loc):
-    """
-    Returns the group containing the location or None if location is empty there
-    """
-
-    assert state[player][loc] == 1
-
-    visited = set()
-    group = Group()
-    q = queue.Queue()
-
-    # Mark location as visited
-    visited.add(loc)
-    q.put(loc)
-
-    while not q.empty():
-        loc = q.get()
-        if state[player][loc] > 0:
-            # Part of group
-            group.locations.add(loc)
-            # Now search for neighbors
-            adj_locs = get_adjacent_locations(state, loc)
-            for neighbor in adj_locs:
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    q.put(neighbor)
-        elif state[1 - player][loc] <= 0:
-            # Part of liberty
-            group.liberties.add(loc)
-
-    return group
 
 
 def get_liberties(state: np.ndarray):
@@ -72,16 +40,7 @@ def get_liberties(state: np.ndarray):
 
     liberty_list = []
     for player_pieces in [blacks, whites]:
-        liberties = np.zeros(player_pieces.shape)
-        for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
-            neighbors = np.roll(player_pieces, shift, axis=axis)
-            pad_idx = 0 if shift == 1 else -1
-            if axis == 0:
-                neighbors[pad_idx, :] = 0
-            else:
-                neighbors[:, pad_idx] = 0
-
-            liberties += neighbors
+        liberties = union_cardinal_shifts(player_pieces)
         liberties *= 1 - all_pieces
         liberty_list.append(liberties)
 
@@ -98,6 +57,20 @@ def get_num_liberties(state: np.ndarray):
     white_liberties = np.count_nonzero(white_liberties)
 
     return black_liberties, white_liberties
+
+
+def union_cardinal_shifts(pieces):
+    liberties = np.zeros(pieces.shape)
+    for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
+        neighbors = np.roll(pieces, shift, axis=axis)
+        pad_idx = 0 if shift == 1 else -1
+        if axis == 0:
+            neighbors[pad_idx, :] = 0
+        else:
+            neighbors[:, pad_idx] = 0
+
+        liberties += neighbors
+    return liberties
 
 
 def is_within_bounds(state, location):
@@ -153,9 +126,9 @@ def explore_territory(state, loc, visited: set):
             if adj_loc in visited:
                 continue
 
-            if state[0][adj_loc] > 0:
+            if state[BLACK, adj_loc[0], adj_loc[1]] > 0:
                 possible_owner.add(BLACK)
-            elif state[1][adj_loc] > 0:
+            elif state[WHITE, adj_loc[0], adj_loc[1]] > 0:
                 possible_owner.add(WHITE)
             else:
                 visited.add(adj_loc)
@@ -216,7 +189,7 @@ def add_invalid_moves(state, group_map):
 
     for loc in possible_invalids:
         loc = tuple(loc)
-        if state[INVD_CHNL][loc] >= 1:  # Occupied/ko invalidness already taken care of
+        if state[INVD_CHNL, loc[0], loc[1]] >= 1:  # Occupied/ko invalidness already taken care of
             continue
 
         adjacent_locations = get_adjacent_locations(state, loc)
@@ -239,7 +212,7 @@ def add_invalid_moves(state, group_map):
         group_with_multiple_liberties_exists = False
         completely_surrounded = True
         for adj_loc in adjacent_locations:
-            if np.sum(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) <= 0:
+            if np.count_nonzero(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
                 completely_surrounded = False
                 break
         if completely_surrounded:
@@ -252,9 +225,9 @@ def add_invalid_moves(state, group_map):
                     break
 
             if group_with_one_liberty_exists and not group_with_multiple_liberties_exists:
-                state[INVD_CHNL][loc] = 1
+                state[INVD_CHNL, loc[0], loc[1]] = 1
 
-        if state[INVD_CHNL][loc] >= 1:
+        if state[INVD_CHNL, loc[0], loc[1]] >= 1:
             # Already determined as invalid
             continue
 
@@ -269,16 +242,16 @@ def add_invalid_moves(state, group_map):
 
         if len(empty_adjacent_locations) <= 0 and not can_kill:
             # Surrounded and cannot kill
-            state[INVD_CHNL][loc] = 1
+            state[INVD_CHNL, loc[0], loc[1]] = 1
 
 
 def get_adjacent_groups(state, group_map, adjacent_locations, player):
     our_groups, opponent_groups = [], []
     for adj_loc in adjacent_locations:
-        if adj_loc not in group_map.keys():
-            continue
         group = group_map[adj_loc]
-        if state[player][adj_loc] > 0:
+        if group is None:
+            continue
+        if state[player, adj_loc[0], adj_loc[1]] > 0:
             our_groups.append(group)
         else:
             opponent_groups.append(group)
