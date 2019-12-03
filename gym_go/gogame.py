@@ -180,10 +180,10 @@ class GoGame:
             all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
             for group in groups_to_update:
                 group_matrix = group_map == group
-                new_liberties = ndimage.binary_dilation(group_matrix) * (1 - all_pieces)
-                new_liberties = np.argwhere(new_liberties)
+                additional_liberties = ndimage.binary_dilation(group_matrix) * (1 - all_pieces) * killed_map
+                additional_liberties = np.argwhere(additional_liberties)
                 group = group.copy()
-                for liberty in new_liberties:
+                for liberty in additional_liberties:
                     group.liberties.add(tuple(liberty))
                 for loc in group.locations:
                     group_map[loc] = group
