@@ -119,8 +119,8 @@ class GoGame:
                 killed = True
 
                 # Remove group in board
-                group_locs = list(zip(*group.locations))
-                state[1 - player, group_locs[0], group_locs[1]] = 0
+                for loc in group.locations:
+                    state[1 - player, loc[0], loc[1]] = 0
 
                 # Metric for ko-protection
                 if len(group.locations) <= 1:
@@ -148,8 +148,8 @@ class GoGame:
                 # New group copy
                 opp_group = opp_group.copy()
                 opp_group.liberties.remove(action)
-                locs = list(zip(*opp_group.locations))
-                group_map[locs[0], locs[1]] = opp_group
+                for loc in opp_group.locations:
+                    group_map[loc[0], loc[1]] = opp_group
 
             merged_group = Group()
             merged_group.locations.add(action)
@@ -163,8 +163,8 @@ class GoGame:
             if action in merged_group.liberties:
                 merged_group.liberties.remove(action)
 
-            locs = list(zip(*merged_group.locations))
-            group_map[locs[0], locs[1]] = merged_group
+            for loc in merged_group.locations:
+                group_map[loc[0], loc[1]] = merged_group
 
         # Update illegal moves
         state_utils.add_invalid_moves(state, group_map)

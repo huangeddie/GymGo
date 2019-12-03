@@ -3,6 +3,7 @@ import queue
 import numpy as np
 from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
 from scipy.ndimage import measurements
+from scipy import ndimage
 
 """
 All set operations are in-place operations
@@ -19,7 +20,7 @@ def get_all_groups(state: np.ndarray):
             group = Group()
 
             group_matrix = (labels == group_idx)
-            liberty_matrix = union_cardinal_shifts(group_matrix) * (1 - all_pieces)
+            liberty_matrix = ndimage.binary_dilation(group_matrix) * (1 - all_pieces)
             liberties = np.argwhere(liberty_matrix)
             for liberty in liberties:
                 group.liberties.add(tuple(liberty))
@@ -40,8 +41,8 @@ def get_liberties(state: np.ndarray):
 
     liberty_list = []
     for player_pieces in [blacks, whites]:
-        liberties = union_cardinal_shifts(player_pieces)
-        liberties *= 1 - all_pieces
+        liberties = ndimage.binary_dilation(player_pieces)
+        liberties *= (1 - all_pieces).astype(np.bool)
         liberty_list.append(liberties)
 
     return liberty_list[0], liberty_list[1]
@@ -57,20 +58,6 @@ def get_num_liberties(state: np.ndarray):
     white_liberties = np.count_nonzero(white_liberties)
 
     return black_liberties, white_liberties
-
-
-def union_cardinal_shifts(pieces):
-    liberties = np.zeros(pieces.shape)
-    for shift, axis in [(1, 0), (-1, 0), (1, 1), (-1, 1)]:
-        neighbors = np.roll(pieces, shift, axis=axis)
-        pad_idx = 0 if shift == 1 else -1
-        if axis == 0:
-            neighbors[pad_idx, :] = 0
-        else:
-            neighbors[:, pad_idx] = 0
-
-        liberties += neighbors
-    return liberties
 
 
 def is_within_bounds(state, location):
