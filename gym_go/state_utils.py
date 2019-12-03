@@ -176,9 +176,13 @@ def add_invalid_moves(state, group_map):
     for group in opp_groups:
         if len(group.liberties) == 1:
             possible_invalids.update(group.liberties)
+        else:
+            possible_invalids.difference_update(group.liberties)
     for group in own_groups:
         if len(group.liberties) > 1:
             possible_invalids.update(group.liberties)
+        else:
+            possible_invalids.difference_update(group.liberties)
 
     player = get_turn(state)
 
