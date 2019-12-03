@@ -238,15 +238,15 @@ def add_invalid_moves(state, group_map):
 
 
 def get_adjacent_groups(state, group_map, adjacent_locations, player):
-    our_groups, opponent_groups = [], []
+    our_groups, opponent_groups = set(), set()
     for adj_loc in adjacent_locations:
         group = group_map[adj_loc]
         if group is None:
             continue
         if state[player, adj_loc[0], adj_loc[1]] > 0:
-            our_groups.append(group)
+            our_groups.add(group)
         else:
-            opponent_groups.append(group)
+            opponent_groups.add(group)
     return our_groups, opponent_groups
 
 
