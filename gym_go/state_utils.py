@@ -1,9 +1,10 @@
 import queue
 
 import numpy as np
-from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
-from scipy.ndimage import measurements
 from scipy import ndimage
+from scipy.ndimage import measurements
+
+from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
 
 """
 All set operations are in-place operations
@@ -169,74 +170,44 @@ def add_invalid_moves(state, group_map):
     state[INVD_CHNL] = np.sum(state[[BLACK, WHITE, INVD_CHNL]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
+    player = get_turn(state)
     possible_invalids = set()
-    opp_groups = set(group_map[np.where(state[WHITE])])
-    own_groups = set(group_map[np.where(state[BLACK])])
+    definite_valids = set()
+    own_groups = set(group_map[np.where(state[player])])
+    opp_groups = set(group_map[np.where(state[1 - player])])
 
     for group in opp_groups:
         if len(group.liberties) == 1:
             possible_invalids.update(group.liberties)
         else:
-            possible_invalids.difference_update(group.liberties)
+            # Can connect to other groups with multi liberties
+            definite_valids.update(group.liberties)
     for group in own_groups:
         if len(group.liberties) > 1:
             possible_invalids.update(group.liberties)
         else:
-            possible_invalids.difference_update(group.liberties)
+            # Can kill
+            definite_valids.update(group.liberties)
 
-    player = get_turn(state)
+    possible_invalids.difference_update(definite_valids)
 
     for loc in possible_invalids:
+        # We know we can't kill
         loc = tuple(loc)
         if state[INVD_CHNL, loc[0], loc[1]] >= 1:  # Occupied/ko invalidness already taken care of
             continue
 
         adjacent_locations = get_adjacent_locations(state, loc)
 
-        adj_own_groups, adj_opp_groups = get_adjacent_groups(state, group_map, adjacent_locations, player)
-
-        # Check whether we can kill
-        can_kill = False
-        for group in adj_own_groups:
-            if len(group.liberties) <= 1:
-                can_kill = True
-                break
-        if can_kill:
-            continue
-
         # Check whether completely surrounded,
         # next to a group with only one liberty AND not
         # next to others with more than one liberty
-        group_with_one_liberty_exists = False
-        group_with_multiple_liberties_exists = False
         completely_surrounded = True
         for adj_loc in adjacent_locations:
             if np.count_nonzero(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
                 completely_surrounded = False
                 break
         if completely_surrounded:
-            for group in adj_opp_groups:
-                if len(group.liberties) <= 1:
-                    group_with_one_liberty_exists = True
-                else:
-                    assert len(group.liberties) > 1
-                    group_with_multiple_liberties_exists = True
-                    break
-
-            if group_with_one_liberty_exists and not group_with_multiple_liberties_exists:
-                state[INVD_CHNL, loc[0], loc[1]] = 1
-                continue
-
-        # Check if surrounded and whether or not we can kill
-        empty_adjacent_locations = adjacent_locations.copy()
-        can_kill = False
-        for group in adj_own_groups:
-            empty_adjacent_locations = empty_adjacent_locations - group.locations
-            if len(group.liberties) <= 1:
-                can_kill = True
-                break
-
-        if len(empty_adjacent_locations) <= 0 and not can_kill:
             # Surrounded and cannot kill
             state[INVD_CHNL, loc[0], loc[1]] = 1
 
