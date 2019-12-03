@@ -29,6 +29,30 @@ class Efficiency(unittest.TestCase):
         std_time = np.std(durs)
         print(f"{avg_time:.3f} AVG, {std_time:.3f} STD")
 
+    def testLowerBound(self):
+        durs = []
+        for _ in tqdm(range(self.iterations)):
+            start = time.time()
+            state = self.env.reset()
+
+            max_steps = self.boardsize ** 2
+            for s in range(max_steps):
+                for _ in range(max_steps - s):
+                    np.copy(state)
+
+                pi = np.ones(self.boardsize ** 2 + 1) / (self.boardsize ** 2 + 1)
+                a = np.random.choice(np.arange(self.boardsize ** 2 + 1), p=pi)
+                np.copy(state)
+
+            end = time.time()
+
+            dur = end - start
+            durs.append(dur)
+
+        avg_time = np.mean(durs)
+        std_time = np.std(durs)
+        print(f"{avg_time:.3f} AVG, {std_time:.3f} STD")
+
     def testUnorderedTrajs(self):
         durs = []
         for _ in tqdm(range(self.iterations)):
