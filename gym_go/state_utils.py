@@ -181,9 +181,16 @@ def add_invalid_moves(state, group_map):
     # Occupied/ko-protection
     state[INVD_CHNL] = np.sum(state[[BLACK, WHITE, INVD_CHNL]], axis=0)
 
-    our_liberties, opp_liberties = get_liberties(state)
-    all_liberties = our_liberties + opp_liberties
-    possible_invalids = np.argwhere(all_liberties > 0)
+    # Possible invalids are on single liberties of opponent groups and on any liberty of own group
+    possible_invalids = set()
+    opp_groups = set(group_map[np.where(state[WHITE])])
+    own_groups = set(group_map[np.where(state[BLACK])])
+
+    for group in opp_groups:
+        if len(group.liberties) == 1:
+            possible_invalids.update(group.liberties)
+    for group in own_groups:
+        possible_invalids.update(group.liberties)
 
     player = get_turn(state)
 
@@ -226,10 +233,7 @@ def add_invalid_moves(state, group_map):
 
             if group_with_one_liberty_exists and not group_with_multiple_liberties_exists:
                 state[INVD_CHNL, loc[0], loc[1]] = 1
-
-        if state[INVD_CHNL, loc[0], loc[1]] >= 1:
-            # Already determined as invalid
-            continue
+                continue
 
         # Check if surrounded and whether or not we can kill
         empty_adjacent_locations = adjacent_locations.copy()
