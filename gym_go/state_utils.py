@@ -91,6 +91,37 @@ def set_invalid_moves(state, group_map):
     state[INVD_CHNL] = surrounded * invalid_array + all_pieces
 
 
+def get_adjacent_locations(state, location):
+    """
+    Returns adjacent locations to the specified one
+    """
+
+    adjacent_locations = set()
+    drs = [-1, 0, 1, 0]
+    dcs = [0, 1, 0, -1]
+
+    # explore in all directions
+    for dr, dc in zip(drs, dcs):
+        # get the expanded area and player that it belongs to
+        loc = (location[0] + dr, location[1] + dc)
+        if is_within_bounds(state, loc):
+            adjacent_locations.add(loc)
+    return adjacent_locations
+
+
+def get_adjacent_groups(state, group_map, adjacent_locations, player):
+    our_groups, opponent_groups = set(), set()
+    for adj_loc in adjacent_locations:
+        group = group_map[adj_loc]
+        if group is None:
+            continue
+        if state[player, adj_loc[0], adj_loc[1]] > 0:
+            our_groups.add(group)
+        else:
+            opponent_groups.add(group)
+    return our_groups, opponent_groups
+
+
 def get_liberties(state: np.ndarray):
     blacks = state[BLACK]
     whites = state[WHITE]
@@ -121,24 +152,6 @@ def is_within_bounds(state, location):
     m, n = get_board_size(state)
 
     return 0 <= location[0] < m and 0 <= location[1] < n
-
-
-def get_adjacent_locations(state, location):
-    """
-    Returns adjacent locations to the specified one
-    """
-
-    adjacent_locations = set()
-    drs = [-1, 0, 1, 0]
-    dcs = [0, 1, 0, -1]
-
-    # explore in all directions
-    for dr, dc in zip(drs, dcs):
-        # get the expanded area and player that it belongs to
-        loc = (location[0] + dr, location[1] + dc)
-        if is_within_bounds(state, loc):
-            adjacent_locations.add(loc)
-    return adjacent_locations
 
 
 def explore_territory(state, loc, visited: set):
@@ -195,19 +208,6 @@ def explore_territory(state, loc, visited: set):
         belong_to = NOONE
 
     return belong_to, teri_size
-
-
-def get_adjacent_groups(state, group_map, adjacent_locations, player):
-    our_groups, opponent_groups = set(), set()
-    for adj_loc in adjacent_locations:
-        group = group_map[adj_loc]
-        if group is None:
-            continue
-        if state[player, adj_loc[0], adj_loc[1]] > 0:
-            our_groups.add(group)
-        else:
-            opponent_groups.add(group)
-    return our_groups, opponent_groups
 
 
 def get_board_size(state):
