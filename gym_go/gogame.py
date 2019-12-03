@@ -81,8 +81,7 @@ class GoGame:
                 state_utils.set_prev_player_passed(state)
 
             # Update invalid channel
-            state_utils.reset_invalid_moves(state)
-            state_utils.add_invalid_moves(state, group_map)
+            state_utils.set_invalid_moves(state, group_map)
 
             # Switch turn
             state_utils.set_turn(state)
@@ -101,8 +100,6 @@ class GoGame:
             raise Exception("{} Not Within bounds".format(action))
         elif state[INVD_CHNL, action[0], action[1]] > 0:
             raise Exception("Invalid Move", action, state)
-
-        state_utils.reset_invalid_moves(state)
 
         # Get all adjacent information
         adjacent_locations = state_utils.get_adjacent_locations(state, action)
@@ -134,11 +131,6 @@ class GoGame:
                     else:
                         single_kill = next(iter(group.locations))
         adj_opp_groups.difference_update(killed_groups)
-
-        # If group was one piece, and location is surrounded by opponents,
-        # activate ko protection
-        if single_kill is not None and len(empty_adjacents_before_kill) <= 0:
-            state[INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Add the piece!
         state[player, action[0], action[1]] = 1
@@ -189,7 +181,12 @@ class GoGame:
                     group_map[loc] = group
 
         # Update illegal moves
-        state_utils.add_invalid_moves(state, group_map)
+        state_utils.set_invalid_moves(state, group_map)
+
+        # If group was one piece, and location is surrounded by opponents,
+        # activate ko protection
+        if single_kill is not None and len(empty_adjacents_before_kill) <= 0:
+            state[INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # This move was not a pass
         state_utils.set_prev_player_passed(state, 0)

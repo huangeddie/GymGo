@@ -35,6 +35,62 @@ def get_all_groups(state: np.ndarray):
     return group_map
 
 
+def set_invalid_moves(state, group_map):
+    """
+    Does not include ko-protection and assumes it will be taken care of elsewhere
+    Updates invalid moves in the OPPONENT's perspective
+    1.) Opponent cannot move at a location
+        i.) If it's occupied
+        i.) If it's protected by ko
+    2.) Opponent can move at a location
+        i.) If it can kill
+    3.) Opponent cannot move at a location
+        i.) If it's adjacent to one of their groups with only one liberty and
+            not adjacent to other groups with more than one liberty and is completely surrounded
+        ii.) If it's surrounded by our pieces and all of those corresponding groups
+            move more than one liberty
+    """
+
+    # Occupied/ko-protection
+    all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+
+    # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
+    player = get_turn(state)
+    possible_invalids = set()
+    definite_valids = set()
+    own_groups = set(group_map[np.where(state[player])])
+    opp_groups = set(group_map[np.where(state[1 - player])])
+
+    for group in opp_groups:
+        if len(group.liberties) == 1:
+            possible_invalids.update(group.liberties)
+        else:
+            # Can connect to other groups with multi liberties
+            definite_valids.update(group.liberties)
+    for group in own_groups:
+        if len(group.liberties) > 1:
+            possible_invalids.update(group.liberties)
+        else:
+            # Can kill
+            definite_valids.update(group.liberties)
+
+    possible_invalids.difference_update(definite_valids)
+
+    invalid_array = np.zeros(state.shape[1:])
+    structure = np.array([[0, 1, 0],
+                          [1, 1, 1],
+                          [0, 1, 0]])
+
+    for loc in possible_invalids:
+        invalid_array[loc] = 1
+
+    neighbors = ndimage.convolve(invalid_array, structure, mode='constant', cval=0) * invalid_array
+    single_invalids = neighbors == 1
+    surrounded = ndimage.convolve(single_invalids + all_pieces, structure, mode='constant', cval=1) == 5
+
+    state[INVD_CHNL] = surrounded * invalid_array + all_pieces
+
+
 def get_liberties(state: np.ndarray):
     blacks = state[BLACK]
     whites = state[WHITE]
@@ -139,77 +195,6 @@ def explore_territory(state, loc, visited: set):
         belong_to = NOONE
 
     return belong_to, teri_size
-
-
-def reset_invalid_moves(state):
-    """
-    In place operator on board
-    :param state:
-    :return:
-    """
-    state[INVD_CHNL] = 0
-
-
-def add_invalid_moves(state, group_map):
-    """
-    Assumes ko-protection is taken care of previously
-    Updates invalid moves in the OPPONENT's perspective
-    1.) Opponent cannot move at a location
-        i.) If it's occupied
-        i.) If it's protected by ko
-    2.) Opponent can move at a location
-        i.) If it can kill
-    3.) Opponent cannot move at a location
-        i.) If it's adjacent to one of their groups with only one liberty and
-            not adjacent to other groups with more than one liberty and is completely surrounded
-        ii.) If it's surrounded by our pieces and all of those corresponding groups
-            move more than one liberty
-    """
-
-    # Occupied/ko-protection
-    state[INVD_CHNL] = np.sum(state[[BLACK, WHITE, INVD_CHNL]], axis=0)
-
-    # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    player = get_turn(state)
-    possible_invalids = set()
-    definite_valids = set()
-    own_groups = set(group_map[np.where(state[player])])
-    opp_groups = set(group_map[np.where(state[1 - player])])
-
-    for group in opp_groups:
-        if len(group.liberties) == 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can connect to other groups with multi liberties
-            definite_valids.update(group.liberties)
-    for group in own_groups:
-        if len(group.liberties) > 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can kill
-            definite_valids.update(group.liberties)
-
-    possible_invalids.difference_update(definite_valids)
-
-    for loc in possible_invalids:
-        # We know we can't kill
-        loc = tuple(loc)
-        if state[INVD_CHNL, loc[0], loc[1]] >= 1:  # Occupied/ko invalidness already taken care of
-            continue
-
-        adjacent_locations = get_adjacent_locations(state, loc)
-
-        # Check whether completely surrounded,
-        # next to a group with only one liberty AND not
-        # next to others with more than one liberty
-        completely_surrounded = True
-        for adj_loc in adjacent_locations:
-            if np.count_nonzero(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
-                completely_surrounded = False
-                break
-        if completely_surrounded:
-            # Surrounded and cannot kill
-            state[INVD_CHNL, loc[0], loc[1]] = 1
 
 
 def get_adjacent_groups(state, group_map, adjacent_locations, player):
