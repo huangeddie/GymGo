@@ -45,13 +45,12 @@ class GoGame:
             next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
             children.append(next_state)
             children_groupmaps.append(child_groupmap)
-        children = np.array(children)
         return children, children_groupmaps
 
     @staticmethod
     def get_canonical_children(state, group_map=None):
         children, child_group_maps = GoGame.get_children(state, group_map)
-        canonical_children = np.array(list(map(lambda child: GoGame.get_canonical_form(child), children)))
+        canonical_children = list(map(lambda child: GoGame.get_canonical_form(child), children))
         return canonical_children, child_group_maps
 
     @staticmethod
@@ -220,6 +219,19 @@ class GoGame:
         """
         m, n = state_utils.get_board_size(state)
         return int(np.count_nonzero(state[DONE_CHNL] == 1) == m * n)
+
+    @staticmethod
+    def get_winning(state):
+        black_area, white_area = GoGame.get_areas(state)
+        area_difference = black_area - white_area
+
+        if area_difference > 0:
+            return 1
+        elif area_difference == 0:
+            return 0
+        else:
+            assert area_difference < 0
+            return -1
 
     @staticmethod
     def get_turn(state):

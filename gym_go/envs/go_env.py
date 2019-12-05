@@ -130,16 +130,7 @@ class GoEnv(gym.Env):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
-        black_area, white_area = GoGame.get_areas(self.state)
-        area_difference = black_area - white_area
-
-        if area_difference > 0:
-            return 1
-        elif area_difference == 0:
-            return 0
-        else:
-            assert area_difference < 0
-            return -1
+        return GoGame.get_winning(self.state)
 
     def get_winner(self):
         """
