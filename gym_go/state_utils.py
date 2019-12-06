@@ -51,7 +51,6 @@ def set_invalid_moves(state, group_map):
             move more than one liberty
     """
 
-    # Occupied/ko-protection
     all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
