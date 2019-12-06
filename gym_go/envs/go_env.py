@@ -22,7 +22,7 @@ class GoEnv(gym.Env):
     gogame = GoGame()
     govars = govars
 
-    def __init__(self, size, reward_method='real', black_first=True, state=None):
+    def __init__(self, size, reward_method='real', black_first=True):
         '''
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
@@ -30,28 +30,19 @@ class GoEnv(gym.Env):
             0 for draw, all from black player's perspective
         '''
         self.size = size
-        if state is None:
-            self.state = GoGame.get_init_board(size, black_first)
-        else:
-            assert state.shape[1] == size
-            self.state = np.copy(state)
+        self.state = GoGame.get_init_board(size, black_first)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(0, 6, shape=(6, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
-        self.group_map = None
+        self.group_map = np.empty(self.state.shape[1:], dtype=object)
 
-    def reset(self, black_first=True, state=None):
+    def reset(self, black_first=True):
         '''
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        if state is None:
-            self.state = GoGame.get_init_board(self.size, black_first)
-        else:
-            assert state.shape[1] == self.size
-            self.state = np.copy(state)
-
-        self.group_map = None
+        self.state = GoGame.get_init_board(self.size, black_first)
+        self.group_map = np.empty(self.state.shape[1:], dtype=object)
         return np.copy(self.state)
 
     def step(self, action):
