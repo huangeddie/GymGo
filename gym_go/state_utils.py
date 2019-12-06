@@ -55,15 +55,11 @@ def set_invalid_moves(state, group_map):
     all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    possible_invalids = get_possible_invalids(group_map, state)
+    invalid_array = get_possible_invalids(group_map, state)
 
-    invalid_array = np.zeros(state.shape[1:])
     structure = np.array([[0, 1, 0],
                           [1, 0, 1],
                           [0, 1, 0]])
-
-    for loc in possible_invalids:
-        invalid_array[loc] = 1
 
     surrounded = ndimage.convolve(all_pieces, structure, mode='constant', cval=1) == 4
 
@@ -71,6 +67,7 @@ def set_invalid_moves(state, group_map):
 
 
 def get_possible_invalids(group_map, state):
+    invalid_array = np.zeros(state.shape[1:])
     player = get_turn(state)
     possible_invalids = set()
     definite_valids = set()
@@ -89,7 +86,10 @@ def get_possible_invalids(group_map, state):
             # Can kill
             definite_valids.update(group.liberties)
     possible_invalids.difference_update(definite_valids)
-    return possible_invalids
+
+    for loc in possible_invalids:
+        invalid_array[loc] = 1
+    return invalid_array
 
 
 def get_adjacent_locations(state, location):
@@ -222,11 +222,7 @@ def get_turn(state):
     :param state:
     :return:
     """
-    m, n = get_board_size(state)
-    if np.count_nonzero(state[TURN_CHNL] == BLACK) == m * n:
-        return BLACK
-    else:
-        return WHITE
+    return int(state[TURN_CHNL, 0, 0])
 
 
 def set_game_ended(state):
