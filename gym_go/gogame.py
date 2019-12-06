@@ -287,28 +287,25 @@ class GoGame:
         Use DFS helper to find territory.
         '''
 
-        m, n = state_utils.get_board_size(state)
-        visited = set()
-        black_area = 0
-        white_area = 0
+        all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+        empties = 1 - all_pieces
 
-        # loop through each intersection on board
-        for loc in itertools.product(range(m), range(n)):
-            # count pieces towards area
-            if state[BLACK, loc[0], loc[1]] > 0:
-                black_area += 1
-            elif state[WHITE, loc[0], loc[1]] > 0:
-                white_area += 1
+        empty_labels, num_empty_areas = ndimage.measurements.label(empties)
 
-            # do DFS on unvisited territory
-            elif loc not in visited:
-                player, area = state_utils.explore_territory(state, loc, visited)
-
-                # add area to corresponding player
-                if player == BLACK:  # BLACK
-                    black_area += area
-                elif player == WHITE:  # WHITE
-                    white_area += area
+        black_area, white_area = np.sum(state[BLACK]), np.sum(state[WHITE])
+        for label in range(1, num_empty_areas + 1):
+            empty_area = empty_labels == label
+            neighbors = ndimage.binary_dilation(empty_area)
+            black_claim = False
+            white_claim = False
+            if (state[BLACK] * neighbors > 0).any():
+                black_claim = True
+            if (state[WHITE] * neighbors > 0).any():
+                white_claim = True
+            if black_claim and not white_claim:
+                black_area += np.sum(empty_area)
+            elif white_claim and not black_claim:
+                white_area += np.sum(empty_area)
 
         return black_area, white_area
 

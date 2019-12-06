@@ -1,10 +1,8 @@
-import queue
-
 import numpy as np
 from scipy import ndimage
 from scipy.ndimage import measurements
 
-from gym_go.govars import ANYONE, NOONE, BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
+from gym_go.govars import BLACK, WHITE, TURN_CHNL, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
 
 """
 All set operations are in-place operations
@@ -152,62 +150,6 @@ def is_within_bounds(state, location):
     m, n = get_board_size(state)
 
     return 0 <= location[0] < m and 0 <= location[1] < n
-
-
-def explore_territory(state, loc, visited: set):
-    """
-    Return which player this territory belongs to (can be None).
-    Will visit all empty intersections connected to
-    the initial location.
-    :param state:
-    :param loc:
-    :param visited:
-    :return: PLAYER, TERRITORY SIZE
-    PLAYER may be 0 - BLACK, 1 - WHITE or None - NO PLAYER
-    """
-
-    # mark this as visited
-    visited.add(loc)
-
-    # Frontier
-    q = queue.Queue()
-    q.put(loc)
-
-    teri_size = 1
-    possible_owner = set()
-
-    while not q.empty():
-        loc = q.get()
-        adj_locs = get_adjacent_locations(state, loc)
-        for adj_loc in adj_locs:
-            if adj_loc in visited:
-                continue
-
-            if state[BLACK, adj_loc[0], adj_loc[1]] > 0:
-                possible_owner.add(BLACK)
-            elif state[WHITE, adj_loc[0], adj_loc[1]] > 0:
-                possible_owner.add(WHITE)
-            else:
-                visited.add(adj_loc)
-                q.put(adj_loc)
-                teri_size += 1
-
-    # filter out ANYONE, and get unique players
-    if ANYONE in possible_owner:
-        possible_owner.remove(ANYONE)
-
-    # if all directions returned the same player (could be 'n')
-    # then return this player
-    if len(possible_owner) <= 0:
-        belong_to = ANYONE
-    elif len(possible_owner) == 1:
-        belong_to = possible_owner.pop()
-
-    # if multiple players or it belonged to no one
-    else:
-        belong_to = NOONE
-
-    return belong_to, teri_size
 
 
 def get_board_size(state):
