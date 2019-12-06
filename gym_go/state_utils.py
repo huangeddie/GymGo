@@ -71,8 +71,8 @@ def get_possible_invalids(group_map, state):
     player = get_turn(state)
     possible_invalids = set()
     definite_valids = set()
-    own_groups = set(group_map[np.where(state[player])])
-    opp_groups = set(group_map[np.where(state[1 - player])])
+    own_groups = set(group_map[np.nonzero(state[player])])
+    opp_groups = set(group_map[np.nonzero(state[1 - player])])
     for group in opp_groups:
         if len(group.liberties) == 1:
             possible_invalids.update(group.liberties)

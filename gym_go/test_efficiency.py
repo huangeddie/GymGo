@@ -55,11 +55,13 @@ class Efficiency(unittest.TestCase):
 
     def testUnorderedTrajs(self):
         durs = []
+        num_steps = []
         for _ in tqdm(range(self.iterations)):
             start = time.time()
             self.env.reset()
 
-            max_steps = self.boardsize ** 2
+            max_steps = 2 * self.boardsize ** 2
+            s = 0
             for s in range(max_steps):
                 valid_moves = self.env.get_valid_moves()
                 self.env.cache_children(canonical=True)
@@ -71,6 +73,7 @@ class Efficiency(unittest.TestCase):
                 state, _, done, _ = self.env.step(a)
                 if done:
                     break
+            num_steps.append(s)
 
             end = time.time()
 
@@ -79,7 +82,8 @@ class Efficiency(unittest.TestCase):
 
         avg_time = np.mean(durs)
         std_time = np.std(durs)
-        print(f"{avg_time:.3f} AVG, {std_time:.3f} STD")
+        avg_steps = np.mean(num_steps)
+        print(f"{avg_time:.3f} AVG SEC, {std_time:.3f} STD SEC, {avg_steps:.1f} AVG STEPS")
 
 
 if __name__ == '__main__':

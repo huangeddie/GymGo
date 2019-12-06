@@ -89,6 +89,7 @@ class GoGame:
             return state, group_map
 
         player = state_utils.get_turn(state)
+        opponent = 1 - player
         m, n = state_utils.get_board_size(state)
 
         # convert the move to 2d
@@ -114,7 +115,7 @@ class GoGame:
         empty_adjacents_before_kill = adjacent_locations.copy()
         for group in adj_opp_groups:
             assert action in group.liberties, (action, group, state[[BLACK, WHITE]])
-            empty_adjacents_before_kill = empty_adjacents_before_kill - group.locations
+            empty_adjacents_before_kill.difference_update(group.locations)
             if len(group.liberties) <= 1:
                 # Killed group
                 killed_groups.add(group)
@@ -122,7 +123,7 @@ class GoGame:
                 # Remove group in board and group map
                 for loc in group.locations:
                     group_map[loc] = None
-                    state[1 - player, loc[0], loc[1]] = 0
+                    state[opponent, loc[0], loc[1]] = 0
 
                 # Metric for ko-protection
                 if len(group.locations) <= 1:
@@ -164,18 +165,19 @@ class GoGame:
             group_map[loc] = merged_group
 
         if len(killed_groups) > 0:
-            # Update own groups adjacent to opponent groups that we just killed
             killed_map = np.zeros(state.shape[1:])
             for group in killed_groups:
                 for loc in group.locations:
                     killed_map[loc] = 1
+            # Update own groups adjacent to opponent groups that we just killed
             killed_liberties = ndimage.binary_dilation(killed_map)
             affected_group_matrix = state[player] * killed_liberties
-            groups_to_update = set(group_map[np.where(affected_group_matrix)])
+            groups_to_update = set(group_map[np.nonzero(affected_group_matrix)])
             all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+            empties = (1 - all_pieces)
             for group in groups_to_update:
                 group_matrix = group_map == group
-                additional_liberties = ndimage.binary_dilation(group_matrix) * (1 - all_pieces) * killed_map
+                additional_liberties = ndimage.binary_dilation(group_matrix) * empties * killed_map
                 additional_liberties = np.argwhere(additional_liberties)
 
                 if not inplace:
