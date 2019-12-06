@@ -3,8 +3,8 @@ import itertools
 import numpy as np
 from gym_go import state_utils
 from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
-from sklearn import preprocessing
 from scipy import ndimage
+from sklearn import preprocessing
 
 """
 The state of the game is a numpy array
@@ -54,7 +54,7 @@ class GoGame:
         return canonical_children, child_group_maps
 
     @staticmethod
-    def get_next_state(state, action, group_map=None):
+    def get_next_state(state, action, group_map=None, inplace=False):
         """
         Does not change the given state
         :param state:
@@ -104,8 +104,9 @@ class GoGame:
         adjacent_locations = state_utils.get_adjacent_locations(state, action)
         adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations, player)
 
-        # Start new group map
-        group_map = np.copy(group_map)
+        if not inplace:
+            # Start new group map
+            group_map = np.copy(group_map)
 
         # Go through opponent groups
         killed_groups = set()
@@ -137,11 +138,14 @@ class GoGame:
         # Update surviving adjacent opponent groups by removing liberties by the new action
         for opp_group in adj_opp_groups:
             assert action in opp_group.liberties, (action, opp_group, adj_opp_groups)
-            # New group copy
-            opp_group = opp_group.copy()
+
+            if not inplace:
+                # New group copy
+                opp_group = opp_group.copy()
+                for loc in opp_group.locations:
+                    group_map[loc] = opp_group
+
             opp_group.liberties.remove(action)
-            for loc in opp_group.locations:
-                group_map[loc] = opp_group
 
         # Update adjacent own groups that are merged with the action
         merged_group = Group()
@@ -173,11 +177,15 @@ class GoGame:
                 group_matrix = group_map == group
                 additional_liberties = ndimage.binary_dilation(group_matrix) * (1 - all_pieces) * killed_map
                 additional_liberties = np.argwhere(additional_liberties)
-                group = group.copy()
+
+                if not inplace:
+                    group = group.copy()
+                    for loc in group.locations:
+                        group_map[loc] = group
+
                 for liberty in additional_liberties:
                     group.liberties.add(tuple(liberty))
-                for loc in group.locations:
-                    group_map[loc] = group
+
 
         # Update illegal moves
         state_utils.set_invalid_moves(state, group_map)

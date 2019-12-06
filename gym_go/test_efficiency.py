@@ -62,13 +62,13 @@ class Efficiency(unittest.TestCase):
             max_steps = self.boardsize ** 2
             for s in range(max_steps):
                 valid_moves = self.env.get_valid_moves()
-                self.env.get_canonical_children()
+                self.env.cache_children(canonical=True)
                 # Do not pass if possible
                 if np.sum(valid_moves) > 1:
                     valid_moves[-1] = 0
                 probs = valid_moves / np.sum(valid_moves)
                 a = np.random.choice(np.arange(self.boardsize ** 2 + 1), p=probs)
-                _, _, done, _ = self.env.step(a)
+                state, _, done, _ = self.env.step(a)
                 if done:
                     break
 

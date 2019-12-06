@@ -35,6 +35,7 @@ class GoEnv(gym.Env):
         self.observation_space = gym.spaces.Box(0, 6, shape=(6, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.clear_cache()
 
     def reset(self, black_first=True):
         '''
@@ -43,6 +44,7 @@ class GoEnv(gym.Env):
         '''
         self.state = GoGame.get_init_board(self.size, black_first)
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.clear_cache()
         return np.copy(self.state)
 
     def step(self, action):
@@ -56,7 +58,13 @@ class GoEnv(gym.Env):
             assert action[0] >= 0 and action[1] >= 0
             assert action[0] < self.size and action[1] < self.size
             action = action[0] * self.size + action[1]
-        self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
+        if self.children is not None:
+            valid_moves = self.get_valid_moves()
+            child_idx = int(np.sum(valid_moves[:action]))
+            self.state, self.group_map = self.children[child_idx], self.child_groupmaps[child_idx]
+        else:
+            self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map, inplace=True)
+        self.clear_cache()
         return np.copy(self.state), self.get_reward(), GoGame.get_game_ended(self.state), self.get_info()
 
     def game_ended(self):
@@ -105,17 +113,22 @@ class GoEnv(gym.Env):
         """
         return GoGame.get_canonical_form(self.state)
 
-    def get_children(self):
-        """
-        :return: (list of child states in order of valid moves, corresponding list of group maps for each child)
-        """
-        return GoGame.get_children(self.state, self.group_map)
+    def clear_cache(self):
+        self.children = None
+        self.child_groupmaps = None
 
-    def get_canonical_children(self):
+    def cache_children(self, canonical=False):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.get_canonical_children(self.state, self.group_map)
+        self.children, self.child_groupmaps = GoGame.get_children(self.state, self.group_map)
+        children = self.children.copy()
+        child_groupmaps = self.child_groupmaps.copy()
+        if canonical:
+            for i in range(len(children)):
+                children[i] = GoGame.get_canonical_form(children[i])
+
+        return children, child_groupmaps
 
     def get_winning(self):
         """
