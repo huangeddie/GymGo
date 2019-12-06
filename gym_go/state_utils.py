@@ -55,12 +55,27 @@ def set_invalid_moves(state, group_map):
     all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
+    possible_invalids = get_possible_invalids(group_map, state)
+
+    invalid_array = np.zeros(state.shape[1:])
+    structure = np.array([[0, 1, 0],
+                          [1, 0, 1],
+                          [0, 1, 0]])
+
+    for loc in possible_invalids:
+        invalid_array[loc] = 1
+
+    surrounded = ndimage.convolve(all_pieces, structure, mode='constant', cval=1) == 4
+
+    state[INVD_CHNL] = surrounded * invalid_array + all_pieces
+
+
+def get_possible_invalids(group_map, state):
     player = get_turn(state)
     possible_invalids = set()
     definite_valids = set()
     own_groups = set(group_map[np.where(state[player])])
     opp_groups = set(group_map[np.where(state[1 - player])])
-
     for group in opp_groups:
         if len(group.liberties) == 1:
             possible_invalids.update(group.liberties)
@@ -73,22 +88,8 @@ def set_invalid_moves(state, group_map):
         else:
             # Can kill
             definite_valids.update(group.liberties)
-
     possible_invalids.difference_update(definite_valids)
-
-    invalid_array = np.zeros(state.shape[1:])
-    structure = np.array([[0, 1, 0],
-                          [1, 1, 1],
-                          [0, 1, 0]])
-
-    for loc in possible_invalids:
-        invalid_array[loc] = 1
-
-    neighbors = ndimage.convolve(invalid_array, structure, mode='constant', cval=0) * invalid_array
-    single_invalids = neighbors == 1
-    surrounded = ndimage.convolve(single_invalids + all_pieces, structure, mode='constant', cval=1) == 5
-
-    state[INVD_CHNL] = surrounded * invalid_array + all_pieces
+    return possible_invalids
 
 
 def get_adjacent_locations(state, location):
