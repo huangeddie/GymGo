@@ -54,7 +54,7 @@ class GoGame:
         return canonical_children, child_group_maps
 
     @staticmethod
-    def get_next_state(state, action, group_map=None):
+    def get_next_state(state, action, group_map):
         """
         Does not change the given state
         :param state:
@@ -69,9 +69,6 @@ class GoGame:
         state = np.copy(state)
         single_kill = None
         empty_adjacents_before_kill = None
-
-        if group_map is None:
-            group_map = state_utils.get_all_groups(state)
 
         # if the current player passes
         if action == GoGame.get_action_size(state) - 1:
