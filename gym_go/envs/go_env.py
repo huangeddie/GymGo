@@ -22,7 +22,7 @@ class GoEnv(gym.Env):
     gogame = GoGame()
     govars = govars
 
-    def __init__(self, size, reward_method='real', black_first=True):
+    def __init__(self, size, reward_method='real'):
         '''
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
@@ -30,18 +30,18 @@ class GoEnv(gym.Env):
             0 for draw, all from black player's perspective
         '''
         self.size = size
-        self.state = GoGame.get_init_board(size, black_first)
+        self.state = GoGame.get_init_board(size)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(0, govars.NUM_CHNLS, shape=(govars.NUM_CHNLS, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
 
-    def reset(self, black_first=True):
+    def reset(self):
         '''
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state = GoGame.get_init_board(self.size, black_first)
+        self.state = GoGame.get_init_board(self.size)
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
         return np.copy(self.state)
 
