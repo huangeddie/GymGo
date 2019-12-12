@@ -35,6 +35,7 @@ class GoEnv(gym.Env):
         self.observation_space = gym.spaces.Box(0, govars.NUM_CHNLS, shape=(govars.NUM_CHNLS, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.done = False
 
     def reset(self):
         '''
@@ -43,6 +44,7 @@ class GoEnv(gym.Env):
         '''
         self.state = GoGame.get_init_board(self.size)
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.done = False
         return np.copy(self.state)
 
     def step(self, action):
@@ -50,17 +52,13 @@ class GoEnv(gym.Env):
         Assumes the correct player is making a move. Black goes first.
         return observation, reward, done, info
         '''
-        if action is None:
-            action = self.size ** 2
-        elif isinstance(action, tuple) or isinstance(action, list) or isinstance(action, np.ndarray):
-            assert action[0] >= 0 and action[1] >= 0
-            assert action[0] < self.size and action[1] < self.size
-            action = action[0] * self.size + action[1]
+        assert not self.done
         self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
-        return np.copy(self.state), self.get_reward(), GoGame.get_game_ended(self.state), self.get_info()
+        self.done = GoGame.get_game_ended(self.state)
+        return np.copy(self.state), self.get_reward(), self.done, self.get_info()
 
     def game_ended(self):
-        return GoGame.get_game_ended(self.state)
+        return self.done
 
     def turn(self):
         return GoGame.get_turn(self.state)

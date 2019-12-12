@@ -28,28 +28,6 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_children(state, group_map=None):
-        if group_map is None:
-            group_map = state_utils.get_group_map(state)
-
-        children = []
-        children_groupmaps = []
-
-        valid_moves = GoGame.get_valid_moves(state)
-        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
-        for move in valid_move_idcs:
-            next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
-            children.append(next_state)
-            children_groupmaps.append(child_groupmap)
-        return children, children_groupmaps
-
-    @staticmethod
-    def get_canonical_children(state, group_map=None):
-        children, child_group_maps = GoGame.get_children(state, group_map)
-        canonical_children = list(map(lambda child: GoGame.get_canonical_form(child), children))
-        return canonical_children, child_group_maps
-
-    @staticmethod
     def get_next_state(state, action, group_map):
         """
         Does not change the given state
@@ -57,17 +35,23 @@ class GoGame:
         :param action:
         :return: The next state
         """
-
-        # check if game is already over
-        if GoGame.get_game_ended(state) != 0:
-            raise Exception('Attempt to step at {} after game is over'.format(action))
+        m, n = state_utils.get_board_size(state)
+        if np.isscalar(action):
+            if action == GoGame.get_action_size(state) - 1:
+                action = None
+            else:
+                # convert the move to 2d
+                action = (action // m, action % n)
+        if action is not None:
+            assert action[0] >= 0 and action[1] >= 0
+            assert action[0] < m and action[1] < n
 
         state = np.copy(state)
         single_kill = None
         empty_adjacents_before_kill = None
 
         # if the current player passes
-        if action == GoGame.get_action_size(state) - 1:
+        if action is None:
             # if two consecutive passes, game is over
             if GoGame.get_prev_player_passed(state):
                 state_utils.set_game_ended(state)
@@ -80,28 +64,21 @@ class GoGame:
 
             player = state_utils.get_turn(state)
             opponent = 1 - player
-            m, n = state_utils.get_board_size(state)
-
-            # convert the move to 2d
-            action = (action // m, action % n)
 
             # Check move is valid
-            if not state_utils.is_within_bounds(state, action):
-                raise Exception("{} Not Within bounds".format(action))
-            elif state[govars.INVD_CHNL, action[0], action[1]] > 0:
+            if state[govars.INVD_CHNL, action[0], action[1]] > 0:
                 raise Exception("Invalid Move", action, state)
 
             # Get all adjacent information
-            adjacent_locations = state_utils.get_adjacent_locations(state, action)
-            adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations,
-                                                                             player)
+            adj_locs = state_utils.get_adjacent_locations(state, action)
+            adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adj_locs, player)
 
             # Start new group map
             group_map = np.copy(group_map)
 
             # Go through opponent groups
             killed_groups = set()
-            empty_adjacents_before_kill = adjacent_locations.copy()
+            empty_adjacents_before_kill = adj_locs.copy()
             for group in adj_opp_groups:
                 assert action in group.liberties, (action, group, state[[govars.BLACK, govars.WHITE]])
                 empty_adjacents_before_kill.difference_update(group.locations)
@@ -156,7 +133,7 @@ class GoGame:
                 merged_group.liberties.update(own_group.liberties)
 
             # Liberties from action
-            for adj_loc in adjacent_locations:
+            for adj_loc in adj_locs:
                 if np.count_nonzero(state[[govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
                     merged_group.liberties.add(adj_loc)
 
@@ -188,9 +165,7 @@ class GoGame:
                         group.liberties.add(tuple(liberty))
 
         # Update illegal moves
-        correct_invalid = state_utils.get_invalid_moves(state, group_map)
-
-        state[govars.INVD_CHNL] = correct_invalid
+        state[govars.INVD_CHNL] = state_utils.get_invalid_moves(state, group_map)
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
@@ -201,6 +176,28 @@ class GoGame:
         state_utils.set_turn(state)
 
         return state, group_map
+
+    @staticmethod
+    def get_children(state, group_map=None):
+        if group_map is None:
+            group_map = state_utils.get_group_map(state)
+
+        children = []
+        children_groupmaps = []
+
+        valid_moves = GoGame.get_valid_moves(state)
+        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
+        for move in valid_move_idcs:
+            next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
+            children.append(next_state)
+            children_groupmaps.append(child_groupmap)
+        return children, children_groupmaps
+
+    @staticmethod
+    def get_canonical_children(state, group_map=None):
+        children, child_group_maps = GoGame.get_children(state, group_map)
+        canonical_children = list(map(lambda child: GoGame.get_canonical_form(child), children))
+        return canonical_children, child_group_maps
 
     @staticmethod
     def get_action_size(state=None, board_size: int = None):
