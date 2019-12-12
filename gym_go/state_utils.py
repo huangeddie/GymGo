@@ -10,7 +10,7 @@ from gym_go import govars
 ##############################################
 
 
-def get_all_groups(state: np.ndarray):
+def get_group_map(state: np.ndarray):
     group_map = np.empty(state.shape[1:], dtype=object)
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     for player in [govars.BLACK, govars.WHITE]:

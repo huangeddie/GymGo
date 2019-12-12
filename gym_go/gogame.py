@@ -30,7 +30,7 @@ class GoGame:
     @staticmethod
     def get_children(state, group_map=None):
         if group_map is None:
-            group_map = state_utils.get_all_groups(state)
+            group_map = state_utils.get_group_map(state)
 
         children = []
         children_groupmaps = []
