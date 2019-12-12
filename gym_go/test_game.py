@@ -3,7 +3,9 @@ import unittest
 
 import gym
 import numpy as np
+
 from gym_go import govars
+
 
 class TestGoEnv(unittest.TestCase):
 
@@ -156,7 +158,8 @@ class TestGoEnv(unittest.TestCase):
         # Pass
         state, reward, done, info = self.env.step(None)
         # Expect two pieces (one in the invalid channel)
-        self.assertEqual(np.count_nonzero(state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]]), 2, state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]])
+        self.assertEqual(np.count_nonzero(state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]]), 2,
+                         state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]])
         self.assertIn('turn', info)
         self.assertEqual(info['turn'], 'b')
 
