@@ -328,6 +328,39 @@ class TestGoEnv(unittest.TestCase):
         with self.assertRaises(Exception):
             self.env.step(final_move)
 
+    def test_small_capture(self):
+        """
+        7,   8,   0,
+
+        0,   5,   4,
+
+        1,   2,   3/6,
+        :return:
+        """
+
+        self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        for move in [6, 7, 8, 5, 4, 8, 0, 1]:
+            state, reward, done, info = self.env.step(move)
+
+        self.env.step(3)
+
+    def test_invalid_after_capture(self):
+        """
+        1,   5,   6,
+
+        7,   4,   _,
+
+        3,   8,   2,
+        :return:
+        """
+
+        self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        for move in [0, 8, 6, 4, 1, 2, 3, 7]:
+            state, reward, done, info = self.env.step(move)
+
+        with self.assertRaises(Exception):
+            self.env.step(5)
+
     def test_valid_no_liberty_capture(self):
         """
         1,   7,   2,   3,   _,   _,   _,
