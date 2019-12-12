@@ -22,11 +22,9 @@ The state of the game is a numpy array
 class GoGame:
 
     @staticmethod
-    def get_init_board(size, black_first=True):
+    def get_init_board(size):
         # return initial board (numpy board)
         state = np.zeros((govars.NUM_CHNLS, size, size))
-        if not black_first:
-            state_utils.set_turn(state)
         return state
 
     @staticmethod
