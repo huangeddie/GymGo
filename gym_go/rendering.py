@@ -1,7 +1,8 @@
 import numpy as np
 import pyglet
+
+from gym_go import govars
 from gym_go.gogame import GoGame
-from gym_go.govars import BLACK
 
 
 def draw_circle(x, y, color, radius):
@@ -25,7 +26,7 @@ def draw_command_labels(batch, window_width, window_height):
 
 def draw_info(batch, window_width, window_height, upper_grid_coord, state):
     turn = GoGame.get_turn(state)
-    turn_str = 'B' if turn == BLACK else 'W'
+    turn_str = 'B' if turn == govars.BLACK else 'W'
     prev_player_passed = GoGame.get_prev_player_passed(state)
     game_ended = GoGame.get_game_ended(state)
     info_label = "Turn: {}\nPassed: {}\nGame: {}".format(turn_str, prev_player_passed,

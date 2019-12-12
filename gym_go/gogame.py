@@ -1,10 +1,8 @@
-import itertools
-
 import numpy as np
-from gym_go import state_utils
-from gym_go.govars import BLACK, WHITE, INVD_CHNL, PASS_CHNL, DONE_CHNL, Group
 from scipy import ndimage
 from sklearn import preprocessing
+
+from gym_go import state_utils, govars
 
 """
 The state of the game is a numpy array
@@ -92,12 +90,13 @@ class GoGame:
             # Check move is valid
             if not state_utils.is_within_bounds(state, action):
                 raise Exception("{} Not Within bounds".format(action))
-            elif state[INVD_CHNL, action[0], action[1]] > 0:
+            elif state[govars.INVD_CHNL, action[0], action[1]] > 0:
                 raise Exception("Invalid Move", action, state)
 
             # Get all adjacent information
             adjacent_locations = state_utils.get_adjacent_locations(state, action)
-            adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations, player)
+            adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations,
+                                                                             player)
 
             # Start new group map
             group_map = np.copy(group_map)
@@ -106,7 +105,7 @@ class GoGame:
             killed_groups = set()
             empty_adjacents_before_kill = adjacent_locations.copy()
             for group in adj_opp_groups:
-                assert action in group.liberties, (action, group, state[[BLACK, WHITE]])
+                assert action in group.liberties, (action, group, state[[govars.BLACK, govars.WHITE]])
                 empty_adjacents_before_kill.difference_update(group.locations)
                 if len(group.liberties) <= 1:
                     # Killed group
@@ -146,7 +145,7 @@ class GoGame:
                 for loc in merged_group.locations:
                     group_map[loc] = merged_group
             else:
-                merged_group = Group()
+                merged_group = govars.Group()
 
             # Locations from action and adjacent groups
             merged_group.locations.add(action)
@@ -160,7 +159,7 @@ class GoGame:
 
             # Liberties from action
             for adj_loc in adjacent_locations:
-                if np.count_nonzero(state[[BLACK, WHITE], adj_loc[0], adj_loc[1]]) == 0:
+                if np.count_nonzero(state[[govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
                     merged_group.liberties.add(adj_loc)
 
             if action in merged_group.liberties:
@@ -176,7 +175,7 @@ class GoGame:
                 killed_liberties = ndimage.binary_dilation(killed_map)
                 affected_group_matrix = state[player] * killed_liberties
                 groups_to_update = set(group_map[np.nonzero(affected_group_matrix)])
-                all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+                all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
                 empties = (1 - all_pieces)
                 for group in groups_to_update:
                     group_matrix = group_map == group
@@ -191,12 +190,14 @@ class GoGame:
                         group.liberties.add(tuple(liberty))
 
         # Update illegal moves
-        state_utils.set_invalid_moves(state, group_map)
+        correct_invalid = state_utils.get_invalid_moves(state, group_map)
+
+        state[govars.INVD_CHNL] = correct_invalid
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
         if single_kill is not None and len(empty_adjacents_before_kill) <= 0:
-            state[INVD_CHNL, single_kill[0], single_kill[1]] = 1
+            state[govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Switch turn
         state_utils.set_turn(state)
@@ -217,7 +218,7 @@ class GoGame:
     @staticmethod
     def get_prev_player_passed(state):
         m, n = state_utils.get_board_size(state)
-        return np.count_nonzero(state[PASS_CHNL] == 1) == m * n
+        return np.count_nonzero(state[govars.PASS_CHNL] == 1) == m * n
 
     @staticmethod
     def get_game_ended(state):
@@ -226,7 +227,7 @@ class GoGame:
         :return: 0/1 = game not ended / game ended respectively
         """
         m, n = state_utils.get_board_size(state)
-        return int(np.count_nonzero(state[DONE_CHNL] == 1) == m * n)
+        return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
     @staticmethod
     def get_winning(state):
@@ -245,7 +246,7 @@ class GoGame:
     def get_turn(state):
         """
         :param state:
-        :return: Who's turn it is (BLACK/WHITE)
+        :return: Who's turn it is (govars.BLACK/govars.WHITE)
         """
         return state_utils.get_turn(state)
 
@@ -254,7 +255,7 @@ class GoGame:
         # return a fixed size binary vector
         if GoGame.get_game_ended(state):
             return np.zeros(GoGame.get_action_size(state))
-        return np.append(1 - state[INVD_CHNL].flatten(), 1)
+        return np.append(1 - state[govars.INVD_CHNL].flatten(), 1)
 
     @staticmethod
     def action_2d_to_1d(action_2d, state):
@@ -280,20 +281,20 @@ class GoGame:
         Use DFS helper to find territory.
         '''
 
-        all_pieces = np.sum(state[[BLACK, WHITE]], axis=0)
+        all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
         empties = 1 - all_pieces
 
         empty_labels, num_empty_areas = ndimage.measurements.label(empties)
 
-        black_area, white_area = np.sum(state[BLACK]), np.sum(state[WHITE])
+        black_area, white_area = np.sum(state[govars.BLACK]), np.sum(state[govars.WHITE])
         for label in range(1, num_empty_areas + 1):
             empty_area = empty_labels == label
             neighbors = ndimage.binary_dilation(empty_area)
             black_claim = False
             white_claim = False
-            if (state[BLACK] * neighbors > 0).any():
+            if (state[govars.BLACK] * neighbors > 0).any():
                 black_claim = True
-            if (state[WHITE] * neighbors > 0).any():
+            if (state[govars.WHITE] * neighbors > 0).any():
                 white_claim = True
             if black_claim and not white_claim:
                 black_area += np.sum(empty_area)
@@ -313,14 +314,14 @@ class GoGame:
         state = np.copy(state)
 
         player = GoGame.get_turn(state)
-        if player == BLACK:
+        if player == govars.BLACK:
             return state
         else:
-            assert player == WHITE
+            assert player == govars.WHITE
             num_channels = state.shape[0]
             channels = np.arange(num_channels)
-            channels[BLACK] = WHITE
-            channels[WHITE] = BLACK
+            channels[govars.BLACK] = govars.WHITE
+            channels[govars.WHITE] = govars.BLACK
             state = state[channels]
             state_utils.set_turn(state)
             return state
@@ -386,7 +387,7 @@ class GoGame:
         Assumed to be (6, BOARD_SIZE, BOARD_SIZE)
         Action is 1D
         """
-        invalid_moves = state[INVD_CHNL].flatten()
+        invalid_moves = state[govars.INVD_CHNL].flatten()
         invalid_moves = np.append(invalid_moves, 0)
         move_weights = 1 - invalid_moves
 
