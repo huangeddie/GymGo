@@ -54,7 +54,7 @@ class GoGame:
         return canonical_children, child_group_maps
 
     @staticmethod
-    def get_next_state(state, action, group_map=None, inplace=False):
+    def get_next_state(state, action, group_map=None):
         """
         Does not change the given state
         :param state:
@@ -102,9 +102,8 @@ class GoGame:
             adjacent_locations = state_utils.get_adjacent_locations(state, action)
             adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adjacent_locations, player)
 
-            if not inplace:
-                # Start new group map
-                group_map = np.copy(group_map)
+            # Start new group map
+            group_map = np.copy(group_map)
 
             # Go through opponent groups
             killed_groups = set()
@@ -136,21 +135,19 @@ class GoGame:
             for opp_group in adj_opp_groups:
                 assert action in opp_group.liberties, (action, opp_group, adj_opp_groups)
 
-                if not inplace:
-                    # New group copy
-                    opp_group = opp_group.copy()
-                    for loc in opp_group.locations:
-                        group_map[loc] = opp_group
+                # New group copy
+                opp_group = opp_group.copy()
+                for loc in opp_group.locations:
+                    group_map[loc] = opp_group
 
                 opp_group.liberties.remove(action)
 
             # Update adjacent own groups that are merged with the action
             if len(adj_own_groups) > 0:
                 merged_group = adj_own_groups.pop()
-                if not inplace:
-                    merged_group = merged_group.copy()
-                    for loc in merged_group.locations:
-                        group_map[loc] = merged_group
+                merged_group = merged_group.copy()
+                for loc in merged_group.locations:
+                    group_map[loc] = merged_group
             else:
                 merged_group = Group()
 
@@ -189,10 +186,9 @@ class GoGame:
                     additional_liberties = ndimage.binary_dilation(group_matrix) * empties * killed_map
                     additional_liberties = np.argwhere(additional_liberties)
 
-                    if not inplace:
-                        group = group.copy()
-                        for loc in group.locations:
-                            group_map[loc] = group
+                    group = group.copy()
+                    for loc in group.locations:
+                        group_map[loc] = group
 
                     for liberty in additional_liberties:
                         group.liberties.add(tuple(liberty))

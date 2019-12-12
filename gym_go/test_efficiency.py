@@ -64,7 +64,7 @@ class Efficiency(unittest.TestCase):
             s = 0
             for s in range(max_steps):
                 valid_moves = self.env.get_valid_moves()
-                self.env.cache_children(canonical=True)
+                self.env.get_children(canonical=True)
                 # Do not pass if possible
                 if np.sum(valid_moves) > 1:
                     valid_moves[-1] = 0
