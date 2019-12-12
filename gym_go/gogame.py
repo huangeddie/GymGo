@@ -8,7 +8,7 @@ from gym_go import state_utils, govars
 The state of the game is a numpy array
 * Are values are either 0 or 1
 
-* Shape [6, SIZE, SIZE]
+* Shape [NUM_CHNLS, SIZE, SIZE]
 
 0 - Black pieces
 1 - White pieces
@@ -24,7 +24,7 @@ class GoGame:
     @staticmethod
     def get_init_board(size, black_first=True):
         # return initial board (numpy board)
-        state = np.zeros((6, size, size))
+        state = np.zeros((govars.NUM_CHNLS, size, size))
         if not black_first:
             state_utils.set_turn(state)
         return state
@@ -384,7 +384,7 @@ class GoGame:
     @staticmethod
     def random_action(state):
         """
-        Assumed to be (6, BOARD_SIZE, BOARD_SIZE)
+        Assumed to be (NUM_CHNLS, BOARD_SIZE, BOARD_SIZE)
         Action is 1D
         """
         invalid_moves = state[govars.INVD_CHNL].flatten()

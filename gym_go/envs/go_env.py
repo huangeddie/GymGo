@@ -32,7 +32,7 @@ class GoEnv(gym.Env):
         self.size = size
         self.state = GoGame.get_init_board(size, black_first)
         self.reward_method = RewardMethod(reward_method)
-        self.observation_space = gym.spaces.Box(0, 6, shape=(6, size, size))
+        self.observation_space = gym.spaces.Box(0, govars.NUM_CHNLS, shape=(govars.NUM_CHNLS, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
         self.group_map = np.empty(self.state.shape[1:], dtype=object)
 

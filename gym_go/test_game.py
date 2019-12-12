@@ -551,7 +551,7 @@ class TestGoEnv(unittest.TestCase):
         env = gym.make('gym_go:go-v0', size=7)
         state = env.reset()
         self.assertIsInstance(state, np.ndarray)
-        self.assertEqual(state.shape[0], 6)
+        self.assertEqual(state.shape[0], govars.NUM_CHNLS)
 
         env.close()
 
