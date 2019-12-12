@@ -318,7 +318,7 @@ class TestGoEnv(unittest.TestCase):
         with self.assertRaises(Exception):
             self.env.step(final_move)
 
-    def test_small_capture(self):
+    def test_small_suicide(self):
         """
         7,   8,   0,
 
@@ -332,7 +332,8 @@ class TestGoEnv(unittest.TestCase):
         for move in [6, 7, 8, 5, 4, 8, 0, 1]:
             state, reward, done, info = self.env.step(move)
 
-        self.env.step(3)
+        with self.assertRaises(Exception):
+            self.env.step(3)
 
     def test_invalid_after_capture(self):
         """
