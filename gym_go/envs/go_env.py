@@ -34,7 +34,7 @@ class GoEnv(gym.Env):
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(0, govars.NUM_CHNLS, shape=(govars.NUM_CHNLS, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
-        self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.group_map = [set(), set()]
         self.done = False
 
     def reset(self):
@@ -43,7 +43,7 @@ class GoEnv(gym.Env):
         done, return state
         '''
         self.state = GoGame.get_init_board(self.size)
-        self.group_map = np.empty(self.state.shape[1:], dtype=object)
+        self.group_map = [set(), set()]
         self.done = False
         return np.copy(self.state)
 
@@ -53,7 +53,16 @@ class GoEnv(gym.Env):
         return observation, reward, done, info
         '''
         assert not self.done
-        self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
+        if isinstance(action, tuple) or isinstance(action, list) or isinstance(action, np.ndarray):
+            assert 0 <= action[0] < self.size
+            assert 0 <= action[1] < self.size
+            action = self.size * action[0] + action[1]
+        elif action is None:
+            action = self.size ** 2
+
+        actions = np.array([action])
+        states, group_maps = GoGame.get_next_states(self.state, actions, self.group_map)
+        self.state, self.group_map = states[0], group_maps[0]
         self.done = GoGame.get_game_ended(self.state)
         return np.copy(self.state), self.get_reward(), self.done, self.get_info()
 

@@ -28,170 +28,161 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_next_state(state, action, group_map):
+    def get_next_states(state, actions, group_map):
         """
         Does not change the given state
-        :param state:
-        :param action:
-        :return: The next state
         """
         m, n = state_utils.get_board_size(state)
-        if np.isscalar(action):
-            if action == GoGame.get_action_size(state) - 1:
-                action = None
+        batch_size = len(actions)
+        board_shape = state.shape[1:]
+        actions_2d = np.empty((batch_size, 2), dtype=np.int)
+        actions_2d[:, 0] = actions // n
+        actions_2d[:, 1] = actions % n
+
+        player = state_utils.get_turn(state)
+        opponent = 1 - player
+        previously_passed = GoGame.get_prev_player_passed(state)
+
+        states = np.tile(state, (batch_size, 1, 1, 1))
+        group_maps = [[group_map[0].copy(), group_map[1].copy()] for _ in range(batch_size)]
+        batch_single_kill = [None for _ in range(batch_size)]
+        batch_killed_groups = [set() for _ in range(batch_size)]
+        batch_prekill_adj_empty = [None for _ in range(batch_size)]
+
+        for i in range(batch_size):
+            # if the current player passes
+            action_2d = tuple(actions_2d[i])
+            if actions[i] == m * n:
+                # if two consecutive passes, game is over
+                if previously_passed:
+                    state_utils.set_game_ended(states[i])
+                else:
+                    state_utils.set_prev_player_passed(states[i])
+
             else:
-                # convert the move to 2d
-                action = (action // m, action % n)
-        if action is not None:
-            assert action[0] >= 0 and action[1] >= 0
-            assert action[0] < m and action[1] < n
+                # This move was not a pass
+                state_utils.set_prev_player_passed(states[i], 0)
 
-        state = np.copy(state)
-        single_kill = None
-        empty_adjacents_before_kill = None
+                # Check move is valid
+                if states[i, govars.INVD_CHNL, action_2d[0], action_2d[1]] > 0:
+                    raise Exception("Invalid Move", action_2d, states[i])
 
-        # if the current player passes
-        if action is None:
-            # if two consecutive passes, game is over
-            if GoGame.get_prev_player_passed(state):
-                state_utils.set_game_ended(state)
-            else:
-                state_utils.set_prev_player_passed(state)
+                # Get all adjacent information
+                adj_occupied, batch_prekill_adj_empty[i] = state_utils.get_adjacent_locations(states[i], action_2d)
+                adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(group_maps[i], adj_occupied, player)
 
-        else:
-            # This move was not a pass
-            state_utils.set_prev_player_passed(state, 0)
+                # Go through opponent groups
+                for group in adj_opp_groups:
+                    assert action_2d in group.liberties, (
+                    action_2d, player, group, states[i, [govars.BLACK, govars.WHITE]])
+                    if len(group.liberties) <= 1:
+                        # Killed group
+                        batch_killed_groups[i].add(group)
 
-            player = state_utils.get_turn(state)
-            opponent = 1 - player
+                        # Remove group in board and group map
+                        for loc in group.locations:
+                            states[i, opponent, loc[0], loc[1]] = 0
+                        group_maps[i][opponent].remove(group)
 
-            # Check move is valid
-            if state[govars.INVD_CHNL, action[0], action[1]] > 0:
-                raise Exception("Invalid Move", action, state)
+                        # Metric for ko-protection
+                        if len(group.locations) <= 1 and batch_single_kill[i] is None:
+                            batch_single_kill[i] = next(iter(group.locations))
 
-            # Get all adjacent information
-            adj_locs = state_utils.get_adjacent_locations(state, action)
-            adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(state, group_map, adj_locs, player)
+                adj_opp_groups.difference_update(batch_killed_groups[i])
 
-            # Start new group map
-            group_map = np.copy(group_map)
+                # Add the piece!
+                states[i, player, action_2d[0], action_2d[1]] = 1
 
-            # Go through opponent groups
-            killed_groups = set()
-            empty_adjacents_before_kill = adj_locs.copy()
-            for group in adj_opp_groups:
-                assert action in group.liberties, (action, group, state[[govars.BLACK, govars.WHITE]])
-                empty_adjacents_before_kill.difference_update(group.locations)
-                if len(group.liberties) <= 1:
-                    # Killed group
-                    killed_groups.add(group)
+                # Update surviving adjacent opponent groups by removing liberties by the new action
+                for opp_group in adj_opp_groups:
+                    assert action_2d in opp_group.liberties, (action_2d, opp_group, adj_opp_groups)
 
-                    # Remove group in board and group map
-                    for loc in group.locations:
-                        group_map[loc] = None
-                        state[opponent, loc[0], loc[1]] = 0
+                    # New group copy
+                    group_maps[i][opponent].remove(opp_group)
+                    opp_group = opp_group.copy()
+                    group_maps[i][opponent].add(opp_group)
 
-                    # Metric for ko-protection
-                    if len(group.locations) <= 1:
-                        if single_kill is not None:
-                            single_kill = None
-                        else:
-                            single_kill = next(iter(group.locations))
-            adj_opp_groups.difference_update(killed_groups)
+                    opp_group.liberties.remove(action_2d)
 
-            # Add the piece!
-            state[player, action[0], action[1]] = 1
+                # Update adjacent own groups that are merged with the action
+                if len(adj_own_groups) > 0:
+                    merged_group = adj_own_groups.pop()
+                    group_maps[i][player].remove(merged_group)
+                    merged_group = merged_group.copy()
+                else:
+                    merged_group = govars.Group()
 
-            # Update surviving adjacent opponent groups by removing liberties by the new action
-            for opp_group in adj_opp_groups:
-                assert action in opp_group.liberties, (action, opp_group, adj_opp_groups)
+                group_maps[i][player].add(merged_group)
 
-                # New group copy
-                opp_group = opp_group.copy()
-                for loc in opp_group.locations:
-                    group_map[loc] = opp_group
+                # Locations from action and adjacent groups
+                merged_group.locations.add(action_2d)
 
-                opp_group.liberties.remove(action)
+                for own_group in adj_own_groups:
+                    merged_group.locations.update(own_group.locations)
+                    merged_group.liberties.update(own_group.liberties)
+                    group_maps[i][player].remove(own_group)
 
-            # Update adjacent own groups that are merged with the action
-            if len(adj_own_groups) > 0:
-                merged_group = adj_own_groups.pop()
-                merged_group = merged_group.copy()
-                for loc in merged_group.locations:
-                    group_map[loc] = merged_group
-            else:
-                merged_group = govars.Group()
+                # Liberties from action
+                for adj_loc in adj_occupied.union(batch_prekill_adj_empty[i]):
+                    if np.count_nonzero(states[i, [govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
+                        merged_group.liberties.add(adj_loc)
 
-            # Locations from action and adjacent groups
-            merged_group.locations.add(action)
-            group_map[action] = merged_group
+                if action_2d in merged_group.liberties:
+                    merged_group.liberties.remove(action_2d)
 
-            for own_group in adj_own_groups:
-                for loc in own_group.locations:
-                    group_map[loc] = merged_group
-                    merged_group.locations.add(loc)
-                merged_group.liberties.update(own_group.liberties)
+                # More work to do if we killed
+                if len(batch_killed_groups[i]) > 0:
+                    killed_map = np.zeros(board_shape)
+                    for group in batch_killed_groups[i]:
+                        for loc in group.locations:
+                            killed_map[loc] = 1
+                    # Update own groups adjacent to opponent groups that we just killed
+                    killed_liberties = ndimage.binary_dilation(killed_map)
+                    affected_idcs = set(zip(*np.nonzero(states[i, player] * killed_liberties)))
+                    groups_to_update = set()
+                    for group in group_maps[i][player]:
+                        if not affected_idcs.isdisjoint(group.locations):
+                            groups_to_update.add(group)
 
-            # Liberties from action
-            for adj_loc in adj_locs:
-                if np.count_nonzero(state[[govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
-                    merged_group.liberties.add(adj_loc)
+                    all_pieces = np.sum(states[i, [govars.BLACK, govars.WHITE]], axis=0)
+                    empties = (1 - all_pieces)
+                    for group in groups_to_update:
+                        group_matrix = np.zeros(board_shape)
+                        for loc in group.locations:
+                            group_matrix[loc] = 1
 
-            if action in merged_group.liberties:
-                merged_group.liberties.remove(action)
+                        additional_liberties = ndimage.binary_dilation(group_matrix) * empties * killed_map
+                        additional_liberties = set(zip(*np.where(additional_liberties)))
 
-            # More work to do if we killed
-            if len(killed_groups) > 0:
-                killed_map = np.zeros(state.shape[1:])
-                for group in killed_groups:
-                    for loc in group.locations:
-                        killed_map[loc] = 1
-                # Update own groups adjacent to opponent groups that we just killed
-                killed_liberties = ndimage.binary_dilation(killed_map)
-                affected_group_matrix = state[player] * killed_liberties
-                groups_to_update = set(group_map[np.nonzero(affected_group_matrix)])
-                all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-                empties = (1 - all_pieces)
-                for group in groups_to_update:
-                    group_matrix = group_map == group
-                    additional_liberties = ndimage.binary_dilation(group_matrix) * empties * killed_map
-                    additional_liberties = np.argwhere(additional_liberties)
+                        group_maps[i][player].remove(group)
+                        group = group.copy()
+                        group_maps[i][player].add(group)
 
-                    group = group.copy()
-                    for loc in group.locations:
-                        group_map[loc] = group
-
-                    for liberty in additional_liberties:
-                        group.liberties.add(tuple(liberty))
+                        group.liberties.update(additional_liberties)
 
         # Update illegal moves
-        state[govars.INVD_CHNL] = state_utils.get_invalid_moves(state, group_map)
+        states[:, govars.INVD_CHNL] = state_utils.get_invalid_moves(states, group_maps, player)
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
-        if single_kill is not None and len(empty_adjacents_before_kill) <= 0:
-            state[govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
+        for i, (single_kill, killed_groups, prekill_adj_empty) in enumerate(zip(batch_single_kill, batch_killed_groups,
+                                                                      batch_prekill_adj_empty)):
+            if single_kill is not None and len(killed_groups) == 1 and len(prekill_adj_empty) <= 0:
+                states[i, govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Switch turn
-        state_utils.set_turn(state)
+        state_utils.batch_set_turn(states)
 
-        return state, group_map
+        return states, group_maps
 
     @staticmethod
     def get_children(state, group_map=None):
         if group_map is None:
             group_map = state_utils.get_group_map(state)
 
-        children = []
-        children_groupmaps = []
-
         valid_moves = GoGame.get_valid_moves(state)
         valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
-        for move in valid_move_idcs:
-            next_state, child_groupmap = GoGame.get_next_state(state, move, group_map)
-            children.append(next_state)
-            children_groupmaps.append(child_groupmap)
-        return children, children_groupmaps
+        return GoGame.get_next_states(state, valid_move_idcs, group_map)
 
     @staticmethod
     def get_canonical_children(state, group_map=None):

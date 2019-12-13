@@ -4,14 +4,17 @@ from scipy.ndimage import measurements
 
 from gym_go import govars
 
-
 ##############################################
 # All set operations are in-place operations
 ##############################################
 
+invalid_structure = np.array([[[0, 1, 0],
+                               [1, 0, 1],
+                               [0, 1, 0]]])
+
 
 def get_group_map(state: np.ndarray):
-    group_map = np.empty(state.shape[1:], dtype=object)
+    group_map = [set(), set()]
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     for player in [govars.BLACK, govars.WHITE]:
         pieces = state[player]
@@ -29,12 +32,12 @@ def get_group_map(state: np.ndarray):
             for loc in locations:
                 loc = tuple(loc)
                 group.locations.add(loc)
-                group_map[loc] = group
+                group_map[player].add(group)
 
     return group_map
 
 
-def get_invalid_moves(state, group_map):
+def get_invalid_moves(states, group_map, player):
     """
     Does not include ko-protection and assumes it will be taken care of elsewhere
     Updates invalid moves in the OPPONENT's perspective
@@ -50,43 +53,39 @@ def get_invalid_moves(state, group_map):
             move more than one liberty
     """
 
-    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+    all_pieces = np.sum(states[:, [govars.BLACK, govars.WHITE]], axis=1)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    invalid_array = get_possible_invalids(group_map, state)
+    invalid_array = get_possible_invalids(states, group_map, player)
 
-    structure = np.array([[0, 1, 0],
-                          [1, 0, 1],
-                          [0, 1, 0]])
-
-    surrounded = ndimage.convolve(all_pieces, structure, mode='constant', cval=1) == 4
+    surrounded = ndimage.convolve(all_pieces, invalid_structure, mode='constant', cval=1) == 4
 
     return surrounded * invalid_array + all_pieces
 
 
-def get_possible_invalids(group_map, state):
-    invalid_array = np.zeros(state.shape[1:])
-    player = get_turn(state)
-    possible_invalids = set()
-    definite_valids = set()
-    own_groups = set(group_map[np.nonzero(state[player])])
-    opp_groups = set(group_map[np.nonzero(state[1 - player])])
-    for group in opp_groups:
-        if len(group.liberties) == 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can connect to other groups with multi liberties
-            definite_valids.update(group.liberties)
-    for group in own_groups:
-        if len(group.liberties) > 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can kill
-            definite_valids.update(group.liberties)
-    possible_invalids.difference_update(definite_valids)
+def get_possible_invalids(states, group_maps, player):
+    invalid_array = np.zeros((states.shape[0], states.shape[2], states.shape[3]))
+    for i in range(len(states)):
+        possible_invalids = set()
+        definite_valids = set()
+        own_groups = group_maps[i][player]
+        opp_groups = group_maps[i][1 - player]
+        for group in opp_groups:
+            if len(group.liberties) == 1:
+                possible_invalids.update(group.liberties)
+            else:
+                # Can connect to other groups with multi liberties
+                definite_valids.update(group.liberties)
+        for group in own_groups:
+            if len(group.liberties) > 1:
+                possible_invalids.update(group.liberties)
+            else:
+                # Can kill
+                definite_valids.update(group.liberties)
+        possible_invalids.difference_update(definite_valids)
 
-    for loc in possible_invalids:
-        invalid_array[loc] = 1
+        for loc in possible_invalids:
+            invalid_array[i, loc[0], loc[1]] = 1
     return invalid_array
 
 
@@ -95,29 +94,57 @@ def get_adjacent_locations(state, location):
     Returns adjacent locations to the specified one
     """
 
-    adjacent_locations = set()
-    drs = [-1, 0, 1, 0]
-    dcs = [0, 1, 0, -1]
+    occupied_adjacents = set()
+    empty_adjacents = set()
 
-    # explore in all directions
-    for dr, dc in zip(drs, dcs):
-        # get the expanded area and player that it belongs to
-        loc = (location[0] + dr, location[1] + dc)
-        if is_within_bounds(state, loc):
-            adjacent_locations.add(loc)
-    return adjacent_locations
+    m, n = get_board_size(state)
+
+    loc = (location[0] + 1, location[1])
+    if loc[0] < m:
+        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
+            empty_adjacents.add(loc)
+        else:
+            occupied_adjacents.add(loc)
+
+    loc = (location[0], location[1] + 1)
+    if loc[1] < n:
+        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
+            empty_adjacents.add(loc)
+        else:
+            occupied_adjacents.add(loc)
+
+    loc = (location[0] - 1, location[1])
+    if loc[0] >= 0:
+        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
+            empty_adjacents.add(loc)
+        else:
+            occupied_adjacents.add(loc)
+
+    loc = (location[0], location[1] - 1)
+    if loc[1] >= 0:
+        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
+            empty_adjacents.add(loc)
+        else:
+            occupied_adjacents.add(loc)
+
+    return occupied_adjacents, empty_adjacents
 
 
-def get_adjacent_groups(state, group_map, adjacent_locations, player):
+def get_adjacent_groups(group_map, adjacent_locations, player):
     our_groups, opponent_groups = set(), set()
     for adj_loc in adjacent_locations:
-        group = group_map[adj_loc]
-        if group is None:
-            continue
-        if state[player, adj_loc[0], adj_loc[1]] > 0:
-            our_groups.add(group)
-        else:
-            opponent_groups.add(group)
+        found = False
+        for group in group_map[player]:
+            if adj_loc in group.locations:
+                our_groups.add(group)
+                found = True
+                break
+
+        if not found:
+            for group in group_map[1 - player]:
+                if adj_loc in group.locations:
+                    opponent_groups.add(group)
+                    break
     return our_groups, opponent_groups
 
 
@@ -147,12 +174,6 @@ def get_num_liberties(state: np.ndarray):
     return black_liberties, white_liberties
 
 
-def is_within_bounds(state, location):
-    m, n = get_board_size(state)
-
-    return 0 <= location[0] < m and 0 <= location[1] < n
-
-
 def get_board_size(state):
     assert state.shape[1] == state.shape[2]
     return (state.shape[1], state.shape[2])
@@ -174,6 +195,10 @@ def set_game_ended(state):
     :return:
     """
     state[govars.DONE_CHNL] = 1
+
+
+def batch_set_turn(states):
+    states[:, govars.TURN_CHNL] = 1 - states[:, govars.TURN_CHNL]
 
 
 def set_turn(state):
