@@ -47,7 +47,7 @@ def get_group_map(state: np.ndarray):
     return group_map
 
 
-def get_invalid_moves(states, group_map, player):
+def get_batch_invalid_moves(states, group_map, player):
     """
     Does not include ko-protection and assumes it will be taken care of elsewhere
     Updates invalid moves in the OPPONENT's perspective
@@ -66,14 +66,14 @@ def get_invalid_moves(states, group_map, player):
     all_pieces = np.sum(states[:, [govars.BLACK, govars.WHITE]], axis=1)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    invalid_array = get_possible_invalids(states, group_map, player)
+    invalid_array = get_batch_possible_invalids(states, group_map, player)
 
     surrounded = ndimage.convolve(all_pieces, batch_surround_struct, mode='constant', cval=1) == 4
 
     return surrounded * invalid_array + all_pieces
 
 
-def get_possible_invalids(states, group_maps, player):
+def get_batch_possible_invalids(states, group_maps, player):
     invalid_array = np.zeros((states.shape[0], states.shape[2], states.shape[3]))
     for i in range(len(states)):
         possible_invalids = set()
@@ -99,18 +99,14 @@ def get_possible_invalids(states, group_maps, player):
     return invalid_array
 
 
-def get_batch_adj_locations(state, locs):
+def get_batch_adj_locations(state, batch_locs):
+    batch_size = len(batch_locs)
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     surrounded = ndimage.convolve(all_pieces, batch_surround_struct[0], mode='constant', cval=1)
 
-    batch_surrounded = np.empty(len(locs), dtype=np.bool)
-    locs_array = np.zeros((len(locs),) + state.shape[1:])
-    for i, loc in enumerate(locs):
-        if loc[0] >= locs_array.shape[1]:
-            continue
-        locs_array[i, loc[0], loc[1]] = 1
-        if surrounded[loc[0], loc[1]] == 4:
-            batch_surrounded[i] = True
+    locs_array = np.zeros((batch_size,) + state.shape[1:])
+    locs_array[np.arange(batch_size), batch_locs[:, 0], batch_locs[:, 1]] = 1
+    batch_surrounded = surrounded[batch_locs[:, 0], batch_locs[:, 1]] == 4
 
     dilated = ndimage.binary_dilation(locs_array, batch_binary_struct)
     neighbors = dilated - locs_array
@@ -123,6 +119,8 @@ def get_batch_adj_locations(state, locs):
             batch_tuple_adj_locs.append([])
             curr_idx += 1
         batch_tuple_adj_locs[-1].append(tuple(adj_locs[1:]))
+    if len(batch_tuple_adj_locs) < len(batch_locs):
+        batch_tuple_adj_locs.append(None)
     return batch_tuple_adj_locs, batch_surrounded
 
 
