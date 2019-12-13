@@ -28,7 +28,7 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_batch_next_states(state, batch_action1d, group_map=None):
+    def get_batch_next_states(state, batch_action1d, group_map=None, canonical=False):
         """
         Does not change the given state
         """
@@ -181,6 +181,9 @@ class GoGame:
         # Switch turn
         state_utils.batch_set_turn(states)
 
+        if canonical:
+            states = GoGame.get_batch_canonical_form(states, opponent)
+        
         return states, batch_group_maps
 
     @staticmethod
@@ -190,10 +193,7 @@ class GoGame:
 
         valid_moves = GoGame.get_valid_moves(state)
         valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
-        children, child_group_maps = GoGame.get_batch_next_states(state, valid_move_idcs, group_map)
-        if canonical:
-            player = state_utils.get_turn(state)
-            children = GoGame.get_batch_canonical_form(children, 1 - player)
+        children, child_group_maps = GoGame.get_batch_next_states(state, valid_move_idcs, group_map, canonical)
         return children, child_group_maps
 
     @staticmethod
