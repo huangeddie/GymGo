@@ -124,47 +124,6 @@ def get_batch_adj_data(state, batch_locs):
     return batch_tuple_adj_locs, batch_surrounded
 
 
-def get_adjacent_locations(state, location):
-    """
-    Returns adjacent locations to the specified one
-    """
-
-    occupied_adjacents = set()
-    empty_adjacents = set()
-
-    m, n = get_board_size(state)
-
-    loc = (location[0] + 1, location[1])
-    if loc[0] < m:
-        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
-            empty_adjacents.add(loc)
-        else:
-            occupied_adjacents.add(loc)
-
-    loc = (location[0], location[1] + 1)
-    if loc[1] < n:
-        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
-            empty_adjacents.add(loc)
-        else:
-            occupied_adjacents.add(loc)
-
-    loc = (location[0] - 1, location[1])
-    if loc[0] >= 0:
-        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
-            empty_adjacents.add(loc)
-        else:
-            occupied_adjacents.add(loc)
-
-    loc = (location[0], location[1] - 1)
-    if loc[1] >= 0:
-        if np.count_nonzero(state[[govars.BLACK, govars.WHITE], loc[0], loc[1]]) == 0:
-            empty_adjacents.add(loc)
-        else:
-            occupied_adjacents.add(loc)
-
-    return occupied_adjacents, empty_adjacents
-
-
 def get_adjacent_groups(group_map, adjacent_locations, player):
     our_groups, opponent_groups = set(), set()
     for adj_loc in adjacent_locations:
@@ -223,7 +182,6 @@ def get_turn(state):
     return int(state[govars.TURN_CHNL, 0, 0])
 
 
-
 def batch_set_turn(states):
     states[:, govars.TURN_CHNL] = 1 - states[:, govars.TURN_CHNL]
 
@@ -235,4 +193,3 @@ def set_turn(state):
     :return:
     """
     state[govars.TURN_CHNL] = 1 - state[govars.TURN_CHNL]
-

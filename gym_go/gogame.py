@@ -51,10 +51,10 @@ class GoGame:
         opponent = 1 - player
         previously_passed = GoGame.get_prev_player_passed(state)
 
-        states = np.tile(state, (batch_size, 1, 1, 1))
+        batch_states = np.tile(state, (batch_size, 1, 1, 1))
 
         # Check move is valid
-        assert (states[non_pass_idcs, govars.INVD_CHNL, batch_action2d[non_pass_idcs, 0], batch_action2d[non_pass_idcs, 1]] == 0).all()
+        assert (batch_states[non_pass_idcs, govars.INVD_CHNL, batch_action2d[non_pass_idcs, 0], batch_action2d[non_pass_idcs, 1]] == 0).all()
 
         batch_group_maps = [[group_map[0].copy(), group_map[1].copy()] for _ in range(batch_size)]
         batch_single_kill = [None for _ in range(batch_size)]
@@ -62,19 +62,20 @@ class GoGame:
 
         batch_adj_locs, batch_surrounded = state_utils.get_batch_adj_data(state, batch_action2d)
 
-        batch_data = enumerate(zip(batch_action1d, batch_action2d, states, batch_group_maps, batch_adj_locs,
-                                   batch_killed_groups))
 
         if previously_passed:
-            states[pass_idcs, govars.DONE_CHNL] = 1
+            batch_states[pass_idcs, govars.DONE_CHNL] = 1
         else:
-            states[pass_idcs, govars.PASS_CHNL] = 1
+            batch_states[pass_idcs, govars.PASS_CHNL] = 1
 
         # Non passes
-        states[non_pass_idcs, govars.PASS_CHNL] = 0
+        batch_states[non_pass_idcs, govars.PASS_CHNL] = 0
 
         # Add pieces
-        states[non_pass_idcs, player, batch_action2d[non_pass_idcs, 0], batch_action2d[non_pass_idcs, 1]] = 1
+        batch_states[non_pass_idcs, player, batch_action2d[non_pass_idcs, 0], batch_action2d[non_pass_idcs, 1]] = 1
+
+        batch_data = enumerate(zip(batch_action1d, batch_action2d, batch_states, batch_group_maps, batch_adj_locs,
+                                   batch_killed_groups))
 
         for i, (action_1d, action_2d, state, group_map, adj_locs, killed_groups) in batch_data:
             # if the current player passes
@@ -172,7 +173,7 @@ class GoGame:
                     group.liberties.update(additional_liberties)
 
         # Update illegal moves
-        states[:, govars.INVD_CHNL] = state_utils.get_batch_invalid_moves(states, batch_group_maps, player)
+        batch_states[:, govars.INVD_CHNL] = state_utils.get_batch_invalid_moves(batch_states, batch_group_maps, player)
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
@@ -182,12 +183,12 @@ class GoGame:
                 state[govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Switch turn
-        state_utils.batch_set_turn(states)
+        state_utils.batch_set_turn(batch_states)
 
         if canonical:
-            states = GoGame.get_batch_canonical_form(states, opponent)
+            batch_states = GoGame.get_batch_canonical_form(batch_states, opponent)
 
-        return states, batch_group_maps
+        return batch_states, batch_group_maps
 
     @staticmethod
     def get_children(state, group_map=None, canonical=False):
