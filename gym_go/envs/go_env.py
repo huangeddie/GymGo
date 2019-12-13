@@ -87,7 +87,7 @@ class GoEnv(gym.Env):
 
     def uniform_random_action(self):
         valid_moves = self.get_valid_moves()
-        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
+        valid_move_idcs = np.argwhere(valid_moves).flatten()
         return np.random.choice(valid_move_idcs)
 
     def get_info(self):

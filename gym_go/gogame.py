@@ -189,7 +189,7 @@ class GoGame:
             group_map = state_utils.get_group_map(state)
 
         valid_moves = GoGame.get_valid_moves(state)
-        valid_move_idcs = np.argwhere(valid_moves > 0).flatten()
+        valid_move_idcs = np.argwhere(valid_moves).flatten()
         children, child_group_maps = GoGame.get_batch_next_states(state, valid_move_idcs, group_map, canonical)
         return children, child_group_maps
 
