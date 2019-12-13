@@ -47,7 +47,8 @@ class GoGame:
         group_maps = [[group_map[0].copy(), group_map[1].copy()] for _ in range(batch_size)]
         batch_single_kill = [None for _ in range(batch_size)]
         batch_killed_groups = [set() for _ in range(batch_size)]
-        batch_prekill_adj_empty = [None for _ in range(batch_size)]
+
+        batch_adj_locs, batch_surrounded = state_utils.get_batch_adj_locations(state, actions_2d)
 
         for i in range(batch_size):
             # if the current player passes
@@ -68,8 +69,8 @@ class GoGame:
                     raise Exception("Invalid Move", action_2d, states[i])
 
                 # Get all adjacent information
-                adj_occupied, batch_prekill_adj_empty[i] = state_utils.get_adjacent_locations(states[i], action_2d)
-                adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(group_maps[i], adj_occupied, player)
+                adj_locs = batch_adj_locs[i]
+                adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(group_maps[i], adj_locs, player)
 
                 # Go through opponent groups
                 for group in adj_opp_groups:
@@ -123,7 +124,7 @@ class GoGame:
                     group_maps[i][player].remove(own_group)
 
                 # Liberties from action
-                for adj_loc in adj_occupied.union(batch_prekill_adj_empty[i]):
+                for adj_loc in adj_locs:
                     if np.count_nonzero(states[i, [govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
                         merged_group.liberties.add(adj_loc)
 
@@ -165,9 +166,9 @@ class GoGame:
 
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
-        for i, (single_kill, killed_groups, prekill_adj_empty) in enumerate(zip(batch_single_kill, batch_killed_groups,
-                                                                      batch_prekill_adj_empty)):
-            if single_kill is not None and len(killed_groups) == 1 and len(prekill_adj_empty) <= 0:
+        for i, (single_kill, killed_groups, surrounded) in enumerate(zip(batch_single_kill, batch_killed_groups,
+                                                                      batch_surrounded)):
+            if single_kill is not None and len(killed_groups) == 1 and surrounded:
                 states[i, govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
         # Switch turn
