@@ -99,7 +99,7 @@ def get_batch_possible_invalids(states, group_maps, player):
     return invalid_array
 
 
-def get_batch_adj_locations(state, batch_locs):
+def get_batch_adj_data(state, batch_locs):
     batch_size = len(batch_locs)
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     surrounded = ndimage.convolve(all_pieces, batch_surround_struct[0], mode='constant', cval=1)

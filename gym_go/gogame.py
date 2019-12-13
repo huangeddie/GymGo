@@ -52,16 +52,14 @@ class GoGame:
         batch_single_kill = [None for _ in range(batch_size)]
         batch_killed_groups = [set() for _ in range(batch_size)]
 
-        batch_adj_locs, batch_surrounded = state_utils.get_batch_adj_locations(state, batch_action2d)
+        batch_adj_locs, batch_surrounded = state_utils.get_batch_adj_data(state, batch_action2d)
 
-        for i in range(batch_size):
+        batch_data = enumerate(zip(batch_action1d, batch_action2d, states, batch_group_maps, batch_adj_locs,
+                                   batch_killed_groups))
+        for i, (action_1d, action_2d, state, group_map, adj_locs, killed_groups) in batch_data:
             # if the current player passes
-            action_2d = tuple(batch_action2d[i])
-            state = states[i]
-            group_map = batch_group_maps[i]
-            adj_locs = batch_adj_locs[i]
-            killed_groups = batch_killed_groups[i]
-            if batch_action1d[i] == m * n:
+            action_2d = tuple(action_2d)
+            if action_1d == m * n:
                 # if two consecutive passes, game is over
                 if previously_passed:
                     state_utils.set_game_ended(state)
@@ -81,8 +79,7 @@ class GoGame:
 
                 # Go through opponent groups
                 for group in adj_opp_groups:
-                    assert action_2d in group.liberties, (
-                    action_2d, player, group, state[[govars.BLACK, govars.WHITE]])
+                    assert action_2d in group.liberties, (action_2d, player, group, state)
                     if len(group.liberties) <= 1:
                         # Killed group
                         killed_groups.add(group)
@@ -174,7 +171,7 @@ class GoGame:
         # If group was one piece, and location is surrounded by opponents,
         # activate ko protection
         for i, (single_kill, killed_groups, surrounded) in enumerate(zip(batch_single_kill, batch_killed_groups,
-                                                                      batch_surrounded)):
+                                                                         batch_surrounded)):
             if single_kill is not None and len(killed_groups) == 1 and surrounded:
                 state[govars.INVD_CHNL, single_kill[0], single_kill[1]] = 1
 
@@ -183,7 +180,7 @@ class GoGame:
 
         if canonical:
             states = GoGame.get_batch_canonical_form(states, opponent)
-        
+
         return states, batch_group_maps
 
     @staticmethod
