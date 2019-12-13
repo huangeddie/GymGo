@@ -28,10 +28,13 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_batch_next_states(state, batch_action1d, group_map):
+    def get_batch_next_states(state, batch_action1d, group_map=None):
         """
         Does not change the given state
         """
+        if group_map is None:
+            group_map = state_utils.get_group_map(state)
+
         m, n = state_utils.get_board_size(state)
         batch_size = len(batch_action1d)
         board_shape = state.shape[1:]
