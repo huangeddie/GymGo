@@ -223,14 +223,6 @@ def get_turn(state):
     return int(state[govars.TURN_CHNL, 0, 0])
 
 
-def set_game_ended(state):
-    """
-    In place operator on board
-    :param state:
-    :return:
-    """
-    state[govars.DONE_CHNL] = 1
-
 
 def batch_set_turn(states):
     states[:, govars.TURN_CHNL] = 1 - states[:, govars.TURN_CHNL]
@@ -244,12 +236,3 @@ def set_turn(state):
     """
     state[govars.TURN_CHNL] = 1 - state[govars.TURN_CHNL]
 
-
-def set_prev_player_passed(state, passed=1):
-    """
-    In place operator on board
-    :param state:
-    :param passed:
-    :return:
-    """
-    state[govars.PASS_CHNL] = 1 if (passed == True or passed == 1) else 0
