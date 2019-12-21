@@ -246,6 +246,7 @@ class GoEnv(gym.Env):
                 elif symbol == key.E:
                     self.window.close()
                     pyglet.app.exit()
+                    self.user_action = -1
 
             pyglet.app.run()
 
