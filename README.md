@@ -74,7 +74,7 @@ go_env.render('terminal')
 ```
 
 # Scoring
-We use simple area scoring to determine the winner. A player's _area_ is defined as the number of empty points a 
+We use Trump Taylor scoring, a simple area scoring, to determine the winner. A player's _area_ is defined as the number of empty points a 
 player's pieces surround plus the number of player's pieces on the board. The _winner_ is the player with the larger 
 area (a game is tied if both players have an equal amount of area on the board).
 
