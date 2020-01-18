@@ -108,7 +108,7 @@ class GoEnv(gym.Env):
 
     def get_canonical_state(self):
         """
-        :return: canonical copy of state
+        :return: canonical shallow copy of state
         """
         return GoGame.get_canonical_form(self.state)
 

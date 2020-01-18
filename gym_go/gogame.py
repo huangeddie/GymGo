@@ -28,6 +28,12 @@ class GoGame:
         return state
 
     @staticmethod
+    def get_next_state(state, action1d, group_map=None, canonical=False):
+        action_wrap = np.array([action1d])
+        next_states_wrap, next_gmps_wrap = GoGame.get_batch_next_states(state, action_wrap, group_map, canonical)
+        return next_states_wrap[0], next_gmps_wrap[0]
+
+    @staticmethod
     def get_batch_next_states(state, batch_action1d, group_map=None, canonical=False):
         """
         Does not change the given state
@@ -186,7 +192,7 @@ class GoGame:
         state_utils.batch_set_turn(batch_states)
 
         if canonical:
-            batch_states = GoGame.get_batch_canonical_form(batch_states, opponent)
+            GoGame.set_batch_canonical_form(batch_states, opponent)
 
         return batch_states, batch_group_maps
 
@@ -302,12 +308,11 @@ class GoGame:
     @staticmethod
     def get_canonical_form(state):
         """
-        The returned state is a seperate copy of the given state
+        The returned state is a shallow copy of the given state
         :param state:
         :param player:
         :return:
         """
-        state = np.copy(state)
 
         player = GoGame.get_turn(state)
         if player == govars.BLACK:
@@ -318,30 +323,23 @@ class GoGame:
             channels = np.arange(num_channels)
             channels[govars.BLACK] = govars.WHITE
             channels[govars.WHITE] = govars.BLACK
-            state = state[channels]
-            state_utils.set_turn(state)
-            return state
+            can_state = state[channels]
+            state_utils.set_turn(can_state)
+            return can_state
 
     @staticmethod
-    def get_batch_canonical_form(batch_states, player):
+    def set_batch_canonical_form(batch_states, player):
         """
+        Assumes the turn of all states is player
         The returned state is a seperate copy of the given state
         :param batch_states:
         :param player:
         :return:
         """
-        batch_states = np.copy(batch_states)
 
-        if player == govars.BLACK:
-            return batch_states
-        else:
-            assert player == govars.WHITE
-            channels = np.arange(govars.NUM_CHNLS)
-            channels[govars.BLACK] = govars.WHITE
-            channels[govars.WHITE] = govars.BLACK
-            batch_states = batch_states[:, channels]
+        if player == govars.WHITE:
+            batch_states[:, [govars.BLACK, govars.WHITE]] = batch_states[:, [govars.WHITE, govars.BLACK]]
             state_utils.batch_set_turn(batch_states)
-            return batch_states
 
     @staticmethod
     def random_symmetry(chunk):
