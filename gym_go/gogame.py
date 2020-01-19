@@ -192,7 +192,7 @@ class GoGame:
         state_utils.batch_set_turn(batch_states)
 
         if canonical:
-            GoGame.set_batch_canonical_form(batch_states, opponent)
+            GoGame.set_batch_canonical_form(batch_states, batch_group_maps, opponent)
 
         return batch_states, batch_group_maps
 
@@ -328,7 +328,7 @@ class GoGame:
             return can_state
 
     @staticmethod
-    def set_batch_canonical_form(batch_states, player):
+    def set_batch_canonical_form(batch_states, batch_group_maps, player):
         """
         Assumes the turn of all states is player
         The returned state is a seperate copy of the given state
@@ -340,6 +340,8 @@ class GoGame:
         if player == govars.WHITE:
             batch_states[:, [govars.BLACK, govars.WHITE]] = batch_states[:, [govars.WHITE, govars.BLACK]]
             state_utils.batch_set_turn(batch_states)
+            for group_map in batch_group_maps:
+                group_map.reverse()
 
     @staticmethod
     def random_symmetry(chunk):
