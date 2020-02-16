@@ -1,8 +1,7 @@
 import numpy as np
+from gym_go import state_utils, govars
 from scipy import ndimage
 from sklearn import preprocessing
-
-from gym_go import state_utils, govars
 
 """
 The state of the game is a numpy array
@@ -31,6 +30,9 @@ class GoGame:
     def get_next_state(state, action1d, group_map=None, canonical=False):
         action_wrap = np.array([action1d])
         next_states_wrap, next_gmps_wrap = GoGame.get_batch_next_states(state, action_wrap, group_map, canonical)
+        assert len(next_states_wrap) == 1
+        assert len(next_gmps_wrap) == 1
+
         return next_states_wrap[0], next_gmps_wrap[0]
 
     @staticmethod
@@ -52,7 +54,6 @@ class GoGame:
         batch_action2d[:, 1] = batch_action1d % n
         batch_action2d[np.where(batch_action1d == m * n)] = 0
 
-
         player = state_utils.get_turn(state)
         opponent = 1 - player
         previously_passed = GoGame.get_prev_player_passed(state)
@@ -60,14 +61,14 @@ class GoGame:
         batch_states = np.tile(state, (batch_size, 1, 1, 1))
 
         # Check move is valid
-        assert (batch_states[non_pass_idcs, govars.INVD_CHNL, batch_action2d[non_pass_idcs, 0], batch_action2d[non_pass_idcs, 1]] == 0).all()
+        assert (batch_states[non_pass_idcs, govars.INVD_CHNL, batch_action2d[non_pass_idcs, 0], batch_action2d[
+            non_pass_idcs, 1]] == 0).all()
 
         batch_group_maps = [[group_map[0].copy(), group_map[1].copy()] for _ in range(batch_size)]
         batch_single_kill = [None for _ in range(batch_size)]
         batch_killed_groups = [set() for _ in range(batch_size)]
 
         batch_adj_locs, batch_surrounded = state_utils.get_batch_adj_data(state, batch_action2d)
-
 
         if previously_passed:
             batch_states[pass_idcs, govars.DONE_CHNL] = 1

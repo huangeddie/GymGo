@@ -112,6 +112,11 @@ class GoEnv(gym.Env):
         """
         return GoGame.get_canonical_form(self.state)
 
+    def get_canonical_group_map(self):
+        if self.turn() == govars.BLACK:
+            return self.group_map
+        else:
+            return list(reversed(self.group_map))
 
     def get_children(self, canonical=False):
         """
