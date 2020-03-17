@@ -61,7 +61,7 @@ class GoEnv(gym.Env):
             action = self.size ** 2
 
         actions = np.array([action])
-        states, group_maps = GoGame.get_batch_next_states(self.state, actions, self.group_map)
+        states, group_maps = GoGame.get_next_states(self.state, actions, self.group_map)
         self.state, self.group_map = states[0], group_maps[0]
         self.done = GoGame.get_game_ended(self.state)
         return np.copy(self.state), self.get_reward(), self.done, self.get_info()
@@ -118,11 +118,11 @@ class GoEnv(gym.Env):
         else:
             return list(reversed(self.group_map))
 
-    def get_children(self, canonical=False):
+    def get_children(self, canonical=False, padded=False):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.get_children(self.state, self.group_map, canonical)
+        return GoGame.get_children(self.state, self.group_map, canonical, padded)
 
     def get_winning(self):
         """

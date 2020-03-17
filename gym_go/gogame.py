@@ -29,14 +29,14 @@ class GoGame:
     @staticmethod
     def get_next_state(state, action1d, group_map=None, canonical=False):
         action_wrap = np.array([action1d])
-        next_states_wrap, next_gmps_wrap = GoGame.get_batch_next_states(state, action_wrap, group_map, canonical)
+        next_states_wrap, next_gmps_wrap = GoGame.get_next_states(state, action_wrap, group_map, canonical)
         assert len(next_states_wrap) == 1
         assert len(next_gmps_wrap) == 1
 
         return next_states_wrap[0], next_gmps_wrap[0]
 
     @staticmethod
-    def get_batch_next_states(state, batch_action1d, group_map=None, canonical=False):
+    def get_next_states(state, batch_action1d, group_map=None, canonical=False):
         """
         Does not change the given state
         """
@@ -198,13 +198,23 @@ class GoGame:
         return batch_states, batch_group_maps
 
     @staticmethod
-    def get_children(state, group_map=None, canonical=False):
+    def get_children(state, group_map=None, canonical=False, padded=False):
         if group_map is None:
             group_map = state_utils.get_group_map(state)
 
         valid_moves = GoGame.get_valid_moves(state)
+        n = len(valid_moves)
         valid_move_idcs = np.argwhere(valid_moves).flatten()
-        children, child_group_maps = GoGame.get_batch_next_states(state, valid_move_idcs, group_map, canonical)
+        children, child_group_maps = GoGame.get_next_states(state, valid_move_idcs, group_map, canonical)
+        if padded:
+            padded_children = np.zeros((n, *state.shape))
+            padded_group_maps = np.empty(n, dtype=np.object)
+
+            padded_children[valid_move_idcs] = children
+            padded_group_maps[valid_move_idcs] = child_group_maps
+
+            children = padded_children
+            child_group_maps = padded_group_maps
         return children, child_group_maps
 
     @staticmethod
