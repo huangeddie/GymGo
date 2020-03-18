@@ -198,7 +198,7 @@ class GoGame:
         return batch_states, batch_group_maps
 
     @staticmethod
-    def get_children(state, group_map=None, canonical=False, padded=False):
+    def get_children(state, group_map=None, canonical=False, padded=True):
         if group_map is None:
             group_map = state_utils.get_group_map(state)
 

@@ -119,7 +119,7 @@ class GoEnv(gym.Env):
         else:
             return list(reversed(self.group_map))
 
-    def get_children(self, canonical=False, padded=False):
+    def get_children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
