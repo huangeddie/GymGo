@@ -193,7 +193,7 @@ class GoGame:
         state_utils.batch_set_turn(batch_states)
 
         if canonical:
-            GoGame.set_batch_canonical_form(batch_states, batch_group_maps, opponent)
+            GoGame.set_batch_canonical_form(batch_states, batch_group_maps, player)
 
         return batch_states, batch_group_maps
 
