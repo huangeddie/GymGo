@@ -10,6 +10,8 @@ go_env = gym.make('gym_go:go-v0', size=args.boardsize)
 done = False
 while not done:
     action = go_env.render(mode="human")
+    if action == -1:
+        exit()
     try:
         _, _, done, _ = go_env.step(action)
     except Exception as e:

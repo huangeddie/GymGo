@@ -62,7 +62,7 @@ class GoGame:
 
         # Check move is valid
         assert (batch_states[non_pass_idcs, govars.INVD_CHNL, batch_action2d[non_pass_idcs, 0], batch_action2d[
-            non_pass_idcs, 1]] == 0).all()
+            non_pass_idcs, 1]] == 0).all(), "Invalid move"
 
         batch_group_maps = [[group_map[0].copy(), group_map[1].copy()] for _ in range(batch_size)]
         batch_single_kill = [None for _ in range(batch_size)]

@@ -181,7 +181,7 @@ class GoEnv(gym.Env):
             from pyglet.window import mouse
             from pyglet.window import key
 
-            screen = pyglet.window.get_platform().get_default_display().get_default_screen()
+            screen = pyglet.canvas.get_display().get_default_screen()
             window_width = int(min(screen.width, screen.height) * 2 / 3)
             window_height = int(window_width * 1.2)
             window = pyglet.window.Window(window_width, window_height)
