@@ -106,4 +106,4 @@ The `state` object that is returned by the `reset` and `step` functions of the e
 # Action
 The `step` function takes in the action to execute and can be in the following forms:
 * a tuple/list of 2 integers representing the row and column or `None` for passing
-* a single integer representing the action in 1d space (i.e 9 would be (1,2) in and 49 would be a pass for a 7x7 board)
+* a single integer representing the action in 1d space (i.e 9 would be (1,2) and 49 would be a pass for a 7x7 board)
