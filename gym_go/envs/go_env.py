@@ -22,7 +22,7 @@ class GoEnv(gym.Env):
     gogame = GoGame()
     govars = govars
 
-    def __init__(self, size, reward_method='real'):
+    def __init__(self, size, komi, reward_method='real'):
         '''
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
@@ -30,6 +30,7 @@ class GoEnv(gym.Env):
             0 for draw, all from black player's perspective
         '''
         self.size = size
+        self.komi = komi
         self.state = GoGame.get_init_board(size)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
@@ -129,7 +130,7 @@ class GoEnv(gym.Env):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
-        return GoGame.get_winning(self.state)
+        return GoGame.get_winning(self.state, self.komi)
 
     def get_winner(self):
         """
@@ -157,7 +158,7 @@ class GoEnv(gym.Env):
 
         elif self.reward_method == RewardMethod.HEURISTIC:
             black_area, white_area = GoGame.get_areas(self.state)
-            area_difference = black_area - white_area
+            area_difference = black_area - white_area - self.komi
             if self.game_ended():
                 return (1 if area_difference > 0 else -1) * self.size ** 2
             return area_difference
