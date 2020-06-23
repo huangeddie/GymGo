@@ -158,10 +158,11 @@ class GoEnv(gym.Env):
 
         elif self.reward_method == RewardMethod.HEURISTIC:
             black_area, white_area = GoGame.get_areas(self.state)
-            area_difference = black_area - white_area - self.komi
+            area_difference = black_area - white_area
+            komi_correction = area_difference - self.komi
             if self.game_ended():
-                return (1 if area_difference > 0 else -1) * self.size ** 2
-            return area_difference
+                return (1 if komi_correction > 0 else -1) * self.size ** 2
+            return komi_correction
         else:
             raise Exception("Unknown Reward Method")
 
