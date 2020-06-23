@@ -8,14 +8,15 @@ It is also optimized to be as efficient as possible in order to efficiently trai
 pip install -e .
 ```
 
-# Example
+# API
+### Basic example
 ```bash
 # In the root directory
 python3 demo.py
 ```
 ![alt text](screenshots/human_ui.png)
 
-# Code Example
+### Coding example
 ```python
 import gym
 
@@ -74,15 +75,28 @@ go_env.render('terminal')
 	Black Area: 1, White Area: 1, Reward: 0
 ```
 
+### High level API
+[GoEnv](gym_go/envs/go_env.py) defines the Gym environment for Go. 
+It contains the highest level API for basic Go usage.  
+
+### Low level API
+[GoGame](gym_go/gogame.py) is the set of low-level functions that defines all the game logic of Go.
+`GoEnv`'s high level API is built on `GoGame`.
+These sets of functions are intended for a more detailed and finetuned 
+usage of Go.
+
 # Scoring
 We use Trump Taylor scoring, a simple area scoring, to determine the winner. A player's _area_ is defined as the number of empty points a 
 player's pieces surround plus the number of player's pieces on the board. The _winner_ is the player with the larger 
 area (a game is tied if both players have an equal amount of area on the board).
 
-# Game Ending
+There is also support for `komi`, a bias score constant to balance the advantage of black going first. 
+By default `komi` is set to 0.
+
+# Game ending
 A game ends when both players pass consecutively
 
-# Reward Methods
+# Reward methods
 Reward methods are in _black_'s perspective
 * **Real**:
   * If game ended:
