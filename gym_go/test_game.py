@@ -597,6 +597,40 @@ class TestGoEnv(unittest.TestCase):
 
         env.close()
 
+    def test_komi(self):
+        env = gym.make('gym_go:go-v0', size=7, komi=2.5, reward_method='real')
+
+        # White win
+        _ = env.step(None)
+        state, reward, done, info = env.step(None)
+        self.assertEqual(-1, reward)
+
+        # White still win
+        env.reset()
+        _ = env.step(0)
+        _ = env.step(2)
+
+        _ = env.step(1)
+        _ = env.step(None)
+
+        state, reward, done, info = env.step(None)
+        self.assertEqual(-1, reward)
+
+        # Black win
+        env.reset()
+        _ = env.step(0)
+        _ = env.step(None)
+
+        _ = env.step(1)
+        _ = env.step(None)
+
+        _ = env.step(2)
+        _ = env.step(None)
+        state, reward, done, info = env.step(None)
+        self.assertEqual(1, reward)
+
+        env.close()
+
     def test_heuristic_reward(self):
         env = gym.make('gym_go:go-v0', size=7, reward_method='heuristic')
 
