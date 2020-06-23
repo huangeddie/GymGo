@@ -243,16 +243,17 @@ class GoGame:
         return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
     @staticmethod
-    def get_winning(state):
+    def get_winning(state, komi):
         black_area, white_area = GoGame.get_areas(state)
         area_difference = black_area - white_area
+        komi_correction = area_difference - komi
 
-        if area_difference > 0:
+        if komi_correction > 0:
             return 1
-        elif area_difference == 0:
+        elif komi_correction == 0:
             return 0
         else:
-            assert area_difference < 0
+            assert komi_correction < 0
             return -1
 
     @staticmethod
