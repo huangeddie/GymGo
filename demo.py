@@ -6,7 +6,7 @@ import gym
 parser = argparse.ArgumentParser(description='Demo Go Environment')
 parser.add_argument('--randai', action='store_true')
 parser.add_argument('--boardsize', type=int, default=7)
-parser.add_argument('--komi', type=float, default=2.5)
+parser.add_argument('--komi', type=float, default=0)
 args = parser.parse_args()
 
 # Initialize environment
