@@ -22,7 +22,7 @@ class GoEnv(gym.Env):
     gogame = GoGame()
     govars = govars
 
-    def __init__(self, size, komi=0, reward_method='real'):
+    def __init__(self, size=7, komi=0, reward_method='real'):
         '''
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
