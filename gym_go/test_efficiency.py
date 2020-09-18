@@ -27,7 +27,7 @@ class Efficiency(unittest.TestCase):
 
         avg_time = np.mean(durs)
         std_time = np.std(durs)
-        print(f"{avg_time:.3f} AVG, {std_time:.3f} STD")
+        print(f"Ordered Trajs: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
 
     def testLowerBound(self):
         durs = []
@@ -51,9 +51,9 @@ class Efficiency(unittest.TestCase):
 
         avg_time = np.mean(durs)
         std_time = np.std(durs)
-        print(f"{avg_time:.3f} AVG, {std_time:.3f} STD")
+        print(f"Lower bound: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
 
-    def testUnorderedTrajs(self):
+    def testRandTrajsWithChildren(self):
         durs = []
         num_steps = []
         for _ in tqdm(range(self.iterations)):
@@ -83,7 +83,8 @@ class Efficiency(unittest.TestCase):
         avg_time = np.mean(durs)
         std_time = np.std(durs)
         avg_steps = np.mean(num_steps)
-        print(f"{avg_time:.3f} AVG SEC, {std_time:.3f} STD SEC, {avg_steps:.1f} AVG STEPS")
+        print(f"Rand Trajs w/ Children: {avg_time:.3f} AVG SEC, {std_time:.3f} STD SEC, {avg_steps:.1f} AVG STEPS",
+              flush=True)
 
 
 if __name__ == '__main__':

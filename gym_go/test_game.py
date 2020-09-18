@@ -26,6 +26,12 @@ class TestGoEnv(unittest.TestCase):
         state = self.env.reset()
         self.assertEqual(np.count_nonzero(state), 0)
 
+    def test_preserve_original_state(self):
+        state = self.env.reset()
+        original_state = np.copy(state)
+        self.env.gogame.get_next_state(state, 0)
+        assert (original_state == state).all()
+
     def test_black_moves_first(self):
         """
         Make a move at 0,0 and assert that a black piece was placed
@@ -525,9 +531,10 @@ class TestGoEnv(unittest.TestCase):
         for move in [(1, 1), (0, 1), (1, 2), (0, 2), (1, 3), (0, 3), (1, 4), (0, 4), (1, 5), (0, 5), (2, 5), (1, 6),
                      (3, 5), (2, 6), (3, 4), (3, 6),
                      (3, 3), (4, 5), (2, 3), (4, 4), (3, 2), (4, 3), (3, 1), (4, 2), (2, 1), (4, 1), None, (3, 0), None,
-                     (2, 0), None, (1, 0), None]:
+                     (2, 0), None, (1, 0)]:
             state, reward, done, info = self.env.step(move)
 
+        self.env.step(None)
         final_move = (2, 2)
         with self.assertRaises(Exception):
             self.env.step(final_move)

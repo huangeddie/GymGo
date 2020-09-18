@@ -1,26 +1,15 @@
 import numpy as np
+from gym_go import govars
 from scipy import ndimage
 from scipy.ndimage import measurements
-
-from gym_go import govars
 
 ##############################################
 # All set operations are in-place operations
 ##############################################
 
-batch_surround_struct = np.array([[[0, 1, 0],
-                                   [1, 0, 1],
-                                   [0, 1, 0]]])
-
-batch_binary_struct = np.array([[[0, 0, 0],
-                                 [0, 0, 0],
-                                 [0, 0, 0]],
-                                [[0, 1, 0],
-                                 [1, 1, 1],
-                                 [0, 1, 0]],
-                                [[0, 0, 0],
-                                 [0, 0, 0],
-                                 [0, 0, 0]]])
+surround_struct = np.array([[0, 1, 0],
+                            [1, 0, 1],
+                            [0, 1, 0]])
 
 
 def get_group_map(state: np.ndarray):
@@ -47,9 +36,8 @@ def get_group_map(state: np.ndarray):
     return group_map
 
 
-def get_batch_invalid_moves(states, group_map, player):
+def get_invalid_moves(state, group_map, player, ko_protect=None):
     """
-    Does not include ko-protection and assumes it will be taken care of elsewhere
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
         i.) If it's occupied
@@ -63,70 +51,61 @@ def get_batch_invalid_moves(states, group_map, player):
             move more than one liberty
     """
 
-    all_pieces = np.sum(states[:, [govars.BLACK, govars.WHITE]], axis=1)
+    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    invalid_array = get_batch_possible_invalids(states, group_map, player)
+    invalid_array = get_possible_invalids(state, group_map, player)
 
-    surrounded = ndimage.convolve(all_pieces, batch_surround_struct, mode='constant', cval=1) == 4
+    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
 
-    return surrounded * invalid_array + all_pieces
+    invalid_moves = surrounded * invalid_array + all_pieces
+    if ko_protect is not None:
+        invalid_moves[ko_protect[0], ko_protect[1]] = 1
+    return invalid_moves
 
 
-def get_batch_possible_invalids(states, group_maps, player):
-    invalid_array = np.zeros((states.shape[0], states.shape[2], states.shape[3]))
-    for i in range(len(states)):
-        possible_invalids = set()
-        definite_valids = set()
-        own_groups = group_maps[i][player]
-        opp_groups = group_maps[i][1 - player]
-        for group in opp_groups:
-            if len(group.liberties) == 1:
-                possible_invalids.update(group.liberties)
-            else:
-                # Can connect to other groups with multi liberties
-                definite_valids.update(group.liberties)
-        for group in own_groups:
-            if len(group.liberties) > 1:
-                possible_invalids.update(group.liberties)
-            else:
-                # Can kill
-                definite_valids.update(group.liberties)
-        possible_invalids.difference_update(definite_valids)
+def get_possible_invalids(state, group_map, player):
+    invalid_array = np.zeros(state.shape[1:])
+    possible_invalids, definite_valids = set(), set()
+    own_groups, opp_groups = group_map[player], group_map[1 - player]
+    for group in opp_groups:
+        if len(group.liberties) == 1:
+            possible_invalids.update(group.liberties)
+        else:
+            # Can connect to other groups with multi liberties
+            definite_valids.update(group.liberties)
+    for group in own_groups:
+        if len(group.liberties) > 1:
+            possible_invalids.update(group.liberties)
+        else:
+            # Can kill
+            definite_valids.update(group.liberties)
+    possible_invalids.difference_update(definite_valids)
 
-        for loc in possible_invalids:
-            invalid_array[i, loc[0], loc[1]] = 1
+    for loc in possible_invalids:
+        invalid_array[loc[0], loc[1]] = 1
     return invalid_array
 
 
-def get_batch_adj_data(state, batch_locs):
-    batch_size = len(batch_locs)
+def get_adj_data(state, action2d):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    surrounded = ndimage.convolve(all_pieces, batch_surround_struct[0], mode='constant', cval=1)
+    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1)
+    surrounded = surrounded[action2d[0], action2d[1]] == 4
 
-    locs_array = np.zeros((batch_size,) + state.shape[1:])
-    locs_array[np.arange(batch_size), batch_locs[:, 0], batch_locs[:, 1]] = 1
-    batch_surrounded = surrounded[batch_locs[:, 0], batch_locs[:, 1]] == 4
+    locs_array = np.zeros(state.shape[1:])
+    locs_array[action2d[0], action2d[1]] = 1
 
-    dilated = ndimage.binary_dilation(locs_array, batch_binary_struct)
+    dilated = ndimage.binary_dilation(locs_array)
     neighbors = dilated - locs_array
-    neighbor_locs = np.argwhere(neighbors)
+    adj_locs = np.argwhere(neighbors)
 
-    batch_tuple_adj_locs = []
-    curr_idx = -1
-    for adj_locs in neighbor_locs:
-        if adj_locs[0] > curr_idx:
-            batch_tuple_adj_locs.append([])
-            curr_idx += 1
-        batch_tuple_adj_locs[-1].append(tuple(adj_locs[1:]))
-    if len(batch_tuple_adj_locs) < len(batch_locs):
-        batch_tuple_adj_locs.append(None)
-    return batch_tuple_adj_locs, batch_surrounded
+    return adj_locs, surrounded
 
 
 def get_adjacent_groups(group_map, adjacent_locations, player):
     our_groups, opponent_groups = set(), set()
     for adj_loc in adjacent_locations:
+        adj_loc = tuple(adj_loc)
         found = False
         for group in group_map[player]:
             if adj_loc in group.locations:
@@ -180,10 +159,6 @@ def get_turn(state):
     :return:
     """
     return int(state[govars.TURN_CHNL, 0, 0])
-
-
-def batch_set_turn(states):
-    states[:, govars.TURN_CHNL] = 1 - states[:, govars.TURN_CHNL]
 
 
 def set_turn(state):
