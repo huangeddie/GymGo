@@ -1,7 +1,8 @@
 import numpy as np
-from gym_go import state_utils, govars
 from scipy import ndimage
 from sklearn import preprocessing
+
+from gym_go import state_utils, govars
 
 """
 The state of the game is a numpy array
@@ -27,20 +28,13 @@ class GoGame:
         return state
 
     @staticmethod
-    def get_next_state(state, action1d, group_map=None, canonical=False):
+    def get_next_state(state, action1d, canonical=False):
         """
         Does not change the given state
         """
 
         # Deep copy the state to modify
         state = np.copy(state)
-
-        # Setup group map
-        if group_map is None:
-            group_map = state_utils.get_group_map(state)
-        else:
-            # Copy the group map
-            group_map = [group_map[0].copy(), group_map[1].copy()]
 
         # Initialize basic variables
         board_shape = state.shape[1:]
@@ -65,7 +59,7 @@ class GoGame:
             state[govars.PASS_CHNL] = 0
 
             # Check move is valid
-            assert (state[govars.INVD_CHNL, action2d[0], action2d[1]] == 0).all(), "Invalid move"
+            assert state[govars.INVD_CHNL, action2d[0], action2d[1]] == 0, ("Invalid move", action2d)
 
             # Add piece
             state[player, action2d[0], action2d[1]] = 1
@@ -74,142 +68,66 @@ class GoGame:
             adj_locs, surrounded = state_utils.get_adj_data(state, action2d)
 
             # Update groups
-            killed_groups = GoGame.update_groups(action2d, state, group_map, adj_locs, player)
+            killed_groups = GoGame.update_groups(state, adj_locs, player)
 
             # If only killed one group, and that one group was one piece, and piece set is surrounded by opponents,
             # activate ko protection
             if len(killed_groups) == 1 and surrounded:
                 killed_group = killed_groups[0]
-                if len(killed_group.locations) == 1:
-                    ko_protect = next(iter(killed_group.locations))
+                if len(killed_group) == 1:
+                    ko_protect = killed_group[0]
 
         # Update illegal moves
-        state[govars.INVD_CHNL] = state_utils.get_invalid_moves(state, group_map, player, ko_protect)
+        state[govars.INVD_CHNL] = state_utils.get_invalid_moves(state, player, ko_protect)
 
         # Switch turn
         state_utils.set_turn(state)
 
         if canonical:
-            GoGame.set_canonical_form(state, group_map, 1 - player)
+            GoGame.set_canonical_form(state, 1 - player)
 
-        return state, group_map
+        return state
 
     @staticmethod
-    def update_groups(action_2d, state, group_map, adj_locs, player):
+    def update_groups(state, adj_locs, player):
         opponent = 1 - player
         killed_groups = []
 
-        action_2d = tuple(action_2d)
+        all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+        empties = 1 - all_pieces
 
-        # Get adjacent groups
-        adj_own_groups, adj_opp_groups = state_utils.get_adjacent_groups(group_map, adj_locs, player)
+        all_opp_groups, _ = ndimage.measurements.label(state[opponent])
 
         # Go through opponent groups
-        for group in adj_opp_groups:
-            assert action_2d in group.liberties, (action_2d, player, group, state)
-            if len(group.liberties) <= 1:
-                # Killed group
-                killed_groups.append(group)
+        for loc in adj_locs:
+            opp_group_idx = all_opp_groups[loc[0], loc[1]]
+            if opp_group_idx > 0:
+                opp_group = all_opp_groups == opp_group_idx
+                liberties = empties * ndimage.binary_dilation(opp_group)
+                if np.sum(liberties) <= 0:
+                    # Killed group
+                    opp_group_locs = np.argwhere(opp_group)
+                    killed_groups.append(opp_group_locs)
 
-                # Remove group in board and group map
-                for loc in group.locations:
-                    state[opponent, loc[0], loc[1]] = 0
-                group_map[opponent].remove(group)
+                    state[opponent] *= 1 - opp_group
 
-        adj_opp_groups.difference_update(killed_groups)
-
-        # Update surviving adjacent opponent groups by removing liberties by the new action
-        for opp_group in adj_opp_groups:
-            assert action_2d in opp_group.liberties, (action_2d, opp_group, adj_opp_groups)
-
-            # New group copy
-            group_map[opponent].remove(opp_group)
-            opp_group = opp_group.copy()
-            group_map[opponent].add(opp_group)
-
-            opp_group.liberties.remove(action_2d)
-
-        # Update adjacent own groups that are merged with the action
-        if len(adj_own_groups) > 0:
-            merged_group = adj_own_groups.pop()
-            group_map[player].remove(merged_group)
-            merged_group = merged_group.copy()
-        else:
-            merged_group = govars.Group()
-
-        group_map[player].add(merged_group)
-
-        # Locations from action and adjacent groups
-        merged_group.locations.add(action_2d)
-
-        for own_group in adj_own_groups:
-            merged_group.locations.update(own_group.locations)
-            merged_group.liberties.update(own_group.liberties)
-            group_map[player].remove(own_group)
-
-        # Liberties from action
-        for adj_loc in adj_locs:
-            if np.count_nonzero(state[[govars.BLACK, govars.WHITE], adj_loc[0], adj_loc[1]]) == 0:
-                merged_group.liberties.add(tuple(adj_loc))
-
-        if action_2d in merged_group.liberties:
-            merged_group.liberties.remove(action_2d)
-
-        # More work to do if we killed
-        if len(killed_groups) > 0:
-            killed_map = np.zeros(state.shape[1:])
-            for group in killed_groups:
-                for loc in group.locations:
-                    killed_map[loc] = 1
-            # Update own groups adjacent to opponent groups that we just killed
-            killed_liberties = ndimage.binary_dilation(killed_map)
-            affected_idcs = set(zip(*np.nonzero(state[player] * killed_liberties)))
-            groups_to_update = set()
-            for group in group_map[player]:
-                if not affected_idcs.isdisjoint(group.locations):
-                    groups_to_update.add(group)
-
-            all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-            empties = (1 - all_pieces)
-            for group in groups_to_update:
-                group_matrix = np.zeros(state.shape[1:])
-                for loc in group.locations:
-                    group_matrix[loc] = 1
-
-                additional_liberties = ndimage.binary_dilation(group_matrix) * empties * killed_map
-                additional_liberties = set(zip(*np.where(additional_liberties)))
-
-                group_map[player].remove(group)
-                group = group.copy()
-                group_map[player].add(group)
-
-                group.liberties.update(additional_liberties)
         return killed_groups
 
     @staticmethod
-    def get_children(state, group_map=None, canonical=False, padded=True):
-        if group_map is None:
-            group_map = state_utils.get_group_map(state)
-
+    def get_children(state, canonical=False, padded=True):
         valid_moves = GoGame.get_valid_moves(state)
         n = len(valid_moves)
         valid_move_idcs = np.argwhere(valid_moves).flatten()
-        children, children_group_maps = [], []
+        children = []
         for move in valid_move_idcs:
-            child, child_group_map = GoGame.get_next_state(state, move, group_map, canonical)
+            child = GoGame.get_next_state(state, move, canonical)
             children.append(child)
-            children_group_maps.append(child_group_map)
 
         if padded:
             padded_children = np.zeros((n, *state.shape))
-            padded_group_maps = np.empty(n, dtype=np.object)
-
             padded_children[valid_move_idcs] = children
-            padded_group_maps[valid_move_idcs] = children_group_maps
-
             children = padded_children
-            children_group_maps = padded_group_maps
-        return children, children_group_maps
+        return children
 
     @staticmethod
     def get_action_size(state=None, board_size: int = None):
@@ -333,7 +251,7 @@ class GoGame:
             return can_state
 
     @staticmethod
-    def set_canonical_form(state, group_map, player):
+    def set_canonical_form(state, player):
         """
         Assumes the turn of all states is player
         The returned state is a seperate copy of the given state
@@ -345,8 +263,6 @@ class GoGame:
         if player == govars.WHITE:
             state[[govars.BLACK, govars.WHITE]] = state[[govars.WHITE, govars.BLACK]]
             state_utils.set_turn(state)
-            group_map.reverse()
-
 
     @staticmethod
     def random_symmetry(chunk):

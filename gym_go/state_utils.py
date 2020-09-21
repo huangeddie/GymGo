@@ -13,31 +13,7 @@ surround_struct = np.array([[0, 1, 0],
                             [0, 1, 0]])
 
 
-def get_group_map(state: np.ndarray):
-    group_map = [set(), set()]
-    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    for player in [govars.BLACK, govars.WHITE]:
-        pieces = state[player]
-        labels, num_groups = measurements.label(pieces)
-        for group_idx in range(1, num_groups + 1):
-            group = govars.Group()
-
-            group_matrix = (labels == group_idx)
-            liberty_matrix = ndimage.binary_dilation(group_matrix) * (1 - all_pieces)
-            liberties = np.argwhere(liberty_matrix)
-            for liberty in liberties:
-                group.liberties.add(tuple(liberty))
-
-            locations = np.argwhere(group_matrix)
-            for loc in locations:
-                loc = tuple(loc)
-                group.locations.add(loc)
-                group_map[player].add(group)
-
-    return group_map
-
-
-def get_invalid_moves(state, group_map, player, ko_protect=None):
+def get_invalid_moves(state, player, ko_protect=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -53,27 +29,31 @@ def get_invalid_moves(state, group_map, player, ko_protect=None):
     """
 
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+    empties = 1 - all_pieces
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
     possible_invalid_array = np.zeros(state.shape[1:])
-    possible_invalids, definite_valids = set(), set()
-    own_groups, opp_groups = group_map[player], group_map[1 - player]
-    for group in opp_groups:
-        if len(group.liberties) == 1:
-            possible_invalids.update(group.liberties)
+    definite_valids_array = np.zeros(state.shape[1:])
+
+    all_own_groups, num_own_groups = measurements.label(state[player])
+    all_opp_groups, num_opp_groups = measurements.label(state[1 - player])
+
+    for group_idx in range(1, num_opp_groups + 1):
+        opp_liberties = empties * ndimage.binary_dilation(all_opp_groups == group_idx)
+        if np.sum(opp_liberties) == 1:
+            possible_invalid_array += opp_liberties
         else:
             # Can connect to other groups with multi liberties
-            definite_valids.update(group.liberties)
-    for group in own_groups:
-        if len(group.liberties) > 1:
-            possible_invalids.update(group.liberties)
+            definite_valids_array += opp_liberties
+    for group_idx in range(1, num_own_groups + 1):
+        own_liberties = empties * ndimage.binary_dilation(all_own_groups == group_idx)
+        if np.sum(own_liberties) > 1:
+            possible_invalid_array += own_liberties
         else:
             # Can kill
-            definite_valids.update(group.liberties)
-    possible_invalids.difference_update(definite_valids)
+            definite_valids_array += own_liberties
 
-    for loc in possible_invalids:
-        possible_invalid_array[loc[0], loc[1]] = 1
+    possible_invalid_array *= (definite_valids_array == 0)
 
     # Invalid moves
     surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
@@ -82,7 +62,7 @@ def get_invalid_moves(state, group_map, player, ko_protect=None):
     # Ko-protection
     if ko_protect is not None:
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
-    return invalid_moves
+    return invalid_moves > 0
 
 
 def get_adj_data(state, action2d):
@@ -108,25 +88,6 @@ def get_adj_data(state, action2d):
             break
 
     return neighbors, surrounded
-
-
-def get_adjacent_groups(group_map, adjacent_locations, player):
-    our_groups, opponent_groups = set(), set()
-    for adj_loc in adjacent_locations:
-        adj_loc = tuple(adj_loc)
-        found = False
-        for group in group_map[player]:
-            if adj_loc in group.locations:
-                our_groups.add(group)
-                found = True
-                break
-
-        if not found:
-            for group in group_map[1 - player]:
-                if adj_loc in group.locations:
-                    opponent_groups.add(group)
-                    break
-    return our_groups, opponent_groups
 
 
 def get_liberties(state: np.ndarray):

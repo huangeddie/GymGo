@@ -36,7 +36,6 @@ class GoEnv(gym.Env):
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
         self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
-        self.group_map = [set(), set()]
         self.done = False
 
     def reset(self):
@@ -45,7 +44,6 @@ class GoEnv(gym.Env):
         done, return state
         '''
         self.state = GoGame.get_init_board(self.size)
-        self.group_map = [set(), set()]
         self.done = False
         return np.copy(self.state)
 
@@ -62,7 +60,7 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
-        self.state, self.group_map = GoGame.get_next_state(self.state, action, self.group_map)
+        self.state = GoGame.get_next_state(self.state, action)
         self.done = GoGame.get_game_ended(self.state)
         return np.copy(self.state), self.get_reward(), self.done, self.get_info()
 
@@ -112,17 +110,11 @@ class GoEnv(gym.Env):
         """
         return GoGame.get_canonical_form(self.state)
 
-    def get_canonical_group_map(self):
-        if self.turn() == govars.BLACK:
-            return self.group_map
-        else:
-            return list(reversed(self.group_map))
-
     def get_children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.get_children(self.state, self.group_map, canonical, padded)
+        return GoGame.get_children(self.state, canonical, padded)
 
     def get_winning(self):
         """
