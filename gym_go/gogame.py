@@ -31,13 +31,18 @@ class GoGame:
         """
         Does not change the given state
         """
+
+        # Deep copy the state to modify
         state = np.copy(state)
+
+        # Setup group map
         if group_map is None:
             group_map = state_utils.get_group_map(state)
         else:
             # Copy the group map
             group_map = [group_map[0].copy(), group_map[1].copy()]
 
+        # Initialize basic variables
         board_shape = state.shape[1:]
         pass_idx = np.prod(board_shape)
         action2d = action1d // board_shape[0], action1d % board_shape[1]
@@ -65,7 +70,7 @@ class GoGame:
             # Add piece
             state[player, action2d[0], action2d[1]] = 1
 
-            # Get adjacent location and check whether the piece will be surrounded
+            # Get adjacent location and check whether the piece will be surrounded by any piece
             adj_locs, surrounded = state_utils.get_adj_data(state, action2d)
 
             # Update groups

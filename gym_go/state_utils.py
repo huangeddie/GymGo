@@ -1,7 +1,8 @@
 import numpy as np
-from gym_go import govars
 from scipy import ndimage
 from scipy.ndimage import measurements
+
+from gym_go import govars
 
 ##############################################
 # All set operations are in-place operations
@@ -54,18 +55,7 @@ def get_invalid_moves(state, group_map, player, ko_protect=None):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    invalid_array = get_possible_invalids(state, group_map, player)
-
-    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
-
-    invalid_moves = surrounded * invalid_array + all_pieces
-    if ko_protect is not None:
-        invalid_moves[ko_protect[0], ko_protect[1]] = 1
-    return invalid_moves
-
-
-def get_possible_invalids(state, group_map, player):
-    invalid_array = np.zeros(state.shape[1:])
+    possible_invalid_array = np.zeros(state.shape[1:])
     possible_invalids, definite_valids = set(), set()
     own_groups, opp_groups = group_map[player], group_map[1 - player]
     for group in opp_groups:
@@ -83,23 +73,41 @@ def get_possible_invalids(state, group_map, player):
     possible_invalids.difference_update(definite_valids)
 
     for loc in possible_invalids:
-        invalid_array[loc[0], loc[1]] = 1
-    return invalid_array
+        possible_invalid_array[loc[0], loc[1]] = 1
+
+    # Invalid moves
+    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
+    invalid_moves = surrounded * possible_invalid_array + all_pieces
+
+    # Ko-protection
+    if ko_protect is not None:
+        invalid_moves[ko_protect[0], ko_protect[1]] = 1
+    return invalid_moves
 
 
 def get_adj_data(state, action2d):
+    neighbors = []
+    if action2d[0] > 0:
+        # Up
+        neighbors.append((action2d[0] - 1, action2d[1]))
+    if action2d[0] < state.shape[1] - 1:
+        # Down
+        neighbors.append((action2d[0] + 1, action2d[1]))
+    if action2d[1] > 0:
+        # Left
+        neighbors.append((action2d[0], action2d[1] - 1))
+    if action2d[1] < state.shape[2] - 1:
+        # Right
+        neighbors.append((action2d[0], action2d[1] + 1))
+
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1)
-    surrounded = surrounded[action2d[0], action2d[1]] == 4
+    surrounded = True
+    for loc in neighbors:
+        if all_pieces[loc] != 1:
+            surrounded = False
+            break
 
-    locs_array = np.zeros(state.shape[1:])
-    locs_array[action2d[0], action2d[1]] = 1
-
-    dilated = ndimage.binary_dilation(locs_array)
-    neighbors = dilated - locs_array
-    adj_locs = np.argwhere(neighbors)
-
-    return adj_locs, surrounded
+    return neighbors, surrounded
 
 
 def get_adjacent_groups(group_map, adjacent_locations, player):
