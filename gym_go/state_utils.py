@@ -37,16 +37,27 @@ def get_invalid_moves(state, player, ko_protect=None):
 
     all_own_groups, num_own_groups = measurements.label(state[player])
     all_opp_groups, num_opp_groups = measurements.label(state[1 - player])
+    expanded_own_groups = np.zeros((num_own_groups, *state.shape[1:]))
+    expanded_opp_groups = np.zeros((num_opp_groups, *state.shape[1:]))
 
-    for group_idx in range(1, num_opp_groups + 1):
-        opp_liberties = empties * ndimage.binary_dilation(all_opp_groups == group_idx)
+    for i in range(num_own_groups):
+        expanded_own_groups[i] = all_own_groups == (i + 1)
+
+    for i in range(num_opp_groups):
+        expanded_opp_groups[i] = all_opp_groups == (i + 1)
+
+    all_own_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_own_groups, surround_struct[np.newaxis])
+    all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
+
+    for i in range(num_opp_groups):
+        opp_liberties = all_opp_liberties[i]
         if np.sum(opp_liberties) == 1:
             possible_invalid_array += opp_liberties
         else:
             # Can connect to other groups with multi liberties
             definite_valids_array += opp_liberties
-    for group_idx in range(1, num_own_groups + 1):
-        own_liberties = empties * ndimage.binary_dilation(all_own_groups == group_idx)
+    for i in range(num_own_groups):
+        own_liberties = all_own_liberties[i]
         if np.sum(own_liberties) > 1:
             possible_invalid_array += own_liberties
         else:
@@ -97,7 +108,7 @@ def get_liberties(state: np.ndarray):
 
     liberty_list = []
     for player_pieces in [blacks, whites]:
-        liberties = ndimage.binary_dilation(player_pieces)
+        liberties = ndimage.binary_dilation(player_pieces, surround_struct)
         liberties *= (1 - all_pieces).astype(np.bool)
         liberty_list.append(liberties)
 
