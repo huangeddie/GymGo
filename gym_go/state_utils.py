@@ -78,11 +78,7 @@ def get_adj_data(state, action2d):
     neighbors = neighbors[np.nonzero(valid)]
 
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    surrounded = True
-    for loc in neighbors:
-        if all_pieces[loc[0], loc[1]] != 1:
-            surrounded = False
-            break
+    surrounded = (all_pieces[neighbors[:, 0], neighbors[:, 1]] > 0).all()
 
     return neighbors, surrounded
 
