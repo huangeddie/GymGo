@@ -99,8 +99,7 @@ class GoGame:
         all_opp_groups, _ = ndimage.measurements.label(state[opponent])
 
         # Go through opponent groups
-        for loc in adj_locs:
-            opp_group_idx = all_opp_groups[loc[0], loc[1]]
+        for opp_group_idx in all_opp_groups[adj_locs[:,0], adj_locs[:,1]]:
             if opp_group_idx > 0:
                 opp_group = all_opp_groups == opp_group_idx
                 liberties = empties * ndimage.binary_dilation(opp_group)

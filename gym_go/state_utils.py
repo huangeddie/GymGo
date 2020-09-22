@@ -12,6 +12,8 @@ surround_struct = np.array([[0, 1, 0],
                             [1, 0, 1],
                             [0, 1, 0]])
 
+neighbor_deltas = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
+
 
 def get_invalid_moves(state, player, ko_protect=None):
     """
@@ -49,7 +51,6 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_own_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_own_groups, surround_struct[np.newaxis])
     all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
 
-
     opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
     possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
     definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
@@ -71,24 +72,15 @@ def get_invalid_moves(state, player, ko_protect=None):
 
 
 def get_adj_data(state, action2d):
-    neighbors = []
-    if action2d[0] > 0:
-        # Up
-        neighbors.append((action2d[0] - 1, action2d[1]))
-    if action2d[0] < state.shape[1] - 1:
-        # Down
-        neighbors.append((action2d[0] + 1, action2d[1]))
-    if action2d[1] > 0:
-        # Left
-        neighbors.append((action2d[0], action2d[1] - 1))
-    if action2d[1] < state.shape[2] - 1:
-        # Right
-        neighbors.append((action2d[0], action2d[1] + 1))
+    neighbors = neighbor_deltas + action2d
+    valid = (neighbors >= 0) & (neighbors < state.shape[1])
+    valid = np.prod(valid, axis=1)
+    neighbors = neighbors[np.nonzero(valid)]
 
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     surrounded = True
     for loc in neighbors:
-        if all_pieces[loc] != 1:
+        if all_pieces[loc[0], loc[1]] != 1:
             surrounded = False
             break
 
