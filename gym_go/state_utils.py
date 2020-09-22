@@ -51,19 +51,19 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
-    possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
-    definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
-
+    # Definite valids are own groups that can be killed or opponent groups with multi-liberties
     own_liberty_counts = np.sum(all_own_liberties, axis=(1, 2))
-    possible_invalid_array += np.sum(all_own_liberties[own_liberty_counts > 1], axis=0)
-    definite_valids_array += np.sum(all_own_liberties[own_liberty_counts == 1], axis=0)
+    opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
 
-    possible_invalid_array *= (definite_valids_array == 0)
+    possible_invalid_array += np.sum(all_own_liberties[own_liberty_counts > 1], axis=0)
+    possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
+
+    definite_valids_array += np.sum(all_own_liberties[own_liberty_counts == 1], axis=0)
+    definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
 
     # Invalid moves
     surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
-    invalid_moves = surrounded * possible_invalid_array + all_pieces
+    invalid_moves = possible_invalid_array * (definite_valids_array == 0) * surrounded + all_pieces
 
     # Ko-protection
     if ko_protect is not None:
