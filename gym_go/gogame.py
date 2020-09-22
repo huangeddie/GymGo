@@ -99,16 +99,17 @@ class GoGame:
         all_opp_groups, _ = ndimage.measurements.label(state[opponent])
 
         # Go through opponent groups
-        for opp_group_idx in all_opp_groups[adj_locs[:,0], adj_locs[:,1]]:
-            if opp_group_idx > 0:
-                opp_group = all_opp_groups == opp_group_idx
-                liberties = empties * ndimage.binary_dilation(opp_group)
-                if np.sum(liberties) <= 0:
-                    # Killed group
-                    opp_group_locs = np.argwhere(opp_group)
-                    killed_groups.append(opp_group_locs)
+        all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
+        all_adj_labels = np.unique(all_adj_labels)
+        for opp_group_idx in all_adj_labels[np.nonzero(all_adj_labels)]:
+            opp_group = all_opp_groups == opp_group_idx
+            liberties = empties * ndimage.binary_dilation(opp_group)
+            if np.sum(liberties) <= 0:
+                # Killed group
+                opp_group_locs = np.argwhere(opp_group)
+                killed_groups.append(opp_group_locs)
 
-                    state[opponent] *= 1 - opp_group
+                state[opponent] *= 1 - opp_group
 
         return killed_groups
 

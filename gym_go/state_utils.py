@@ -33,7 +33,6 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     empties = 1 - all_pieces
 
-    # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
     possible_invalid_array = np.zeros(state.shape[1:])
     definite_valids_array = np.zeros(state.shape[1:])
 
@@ -51,6 +50,7 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_own_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_own_groups, surround_struct[np.newaxis])
     all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
 
+    # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
     opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
     possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
     definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
