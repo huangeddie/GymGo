@@ -51,7 +51,8 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    # Definite valids are own groups that can be killed or opponent groups with multi-liberties
+    # Definite valids are on single liberties of own groups, multi-liberties of opponent groups
+    # or you are not surrounded
     own_liberty_counts = np.sum(all_own_liberties, axis=(1, 2))
     opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
 
