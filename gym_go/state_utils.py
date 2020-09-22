@@ -49,20 +49,14 @@ def get_invalid_moves(state, player, ko_protect=None):
     all_own_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_own_groups, surround_struct[np.newaxis])
     all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
 
-    for i in range(num_opp_groups):
-        opp_liberties = all_opp_liberties[i]
-        if np.sum(opp_liberties) == 1:
-            possible_invalid_array += opp_liberties
-        else:
-            # Can connect to other groups with multi liberties
-            definite_valids_array += opp_liberties
-    for i in range(num_own_groups):
-        own_liberties = all_own_liberties[i]
-        if np.sum(own_liberties) > 1:
-            possible_invalid_array += own_liberties
-        else:
-            # Can kill
-            definite_valids_array += own_liberties
+
+    opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
+    possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
+    definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
+
+    own_liberty_counts = np.sum(all_own_liberties, axis=(1, 2))
+    possible_invalid_array += np.sum(all_own_liberties[own_liberty_counts > 1], axis=0)
+    definite_valids_array += np.sum(all_own_liberties[own_liberty_counts == 1], axis=0)
 
     possible_invalid_array *= (definite_valids_array == 0)
 
