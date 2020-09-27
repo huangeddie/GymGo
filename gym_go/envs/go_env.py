@@ -93,9 +93,9 @@ class GoEnv(gym.Env):
         :return: Debugging info for the state
         """
         return {
+            'turn': GoGame.turn(self.state),
+            'invalid_moves': GoGame.invalid_moves(self.state),
             'prev_player_passed': GoGame.prev_player_passed(self.state),
-            'turn': 'b' if GoGame.turn(self.state) == GoEnv.govars.BLACK else 'w',
-            'game_ended': GoGame.game_ended(self.state)
         }
 
     def state(self):
