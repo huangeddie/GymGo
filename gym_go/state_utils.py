@@ -71,6 +71,29 @@ def get_invalid_moves(state, player, ko_protect=None):
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
     return invalid_moves > 0
 
+def update_groups(state, adj_locs, player):
+    opponent = 1 - player
+    killed_groups = []
+
+    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+    empties = 1 - all_pieces
+
+    all_opp_groups, _ = ndimage.measurements.label(state[opponent])
+
+    # Go through opponent groups
+    all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
+    all_adj_labels = np.unique(all_adj_labels)
+    for opp_group_idx in all_adj_labels[np.nonzero(all_adj_labels)]:
+        opp_group = all_opp_groups == opp_group_idx
+        liberties = empties * ndimage.binary_dilation(opp_group)
+        if np.sum(liberties) <= 0:
+            # Killed group
+            opp_group_locs = np.argwhere(opp_group)
+            killed_groups.append(opp_group_locs)
+
+            state[opponent] *= 1 - opp_group
+
+    return killed_groups
 
 def get_adj_data(state, action2d):
     neighbors = neighbor_deltas + action2d

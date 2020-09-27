@@ -68,7 +68,7 @@ class GoGame:
             adj_locs, surrounded = state_utils.get_adj_data(state, action2d)
 
             # Update groups
-            killed_groups = GoGame.update_groups(state, adj_locs, player)
+            killed_groups = state_utils.update_groups(state, adj_locs, player)
 
             # If only killed one group, and that one group was one piece, and piece set is surrounded by opponents,
             # activate ko protection
@@ -87,31 +87,6 @@ class GoGame:
             GoGame.set_canonical_form(state, 1 - player)
 
         return state
-
-    @staticmethod
-    def update_groups(state, adj_locs, player):
-        opponent = 1 - player
-        killed_groups = []
-
-        all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-        empties = 1 - all_pieces
-
-        all_opp_groups, _ = ndimage.measurements.label(state[opponent])
-
-        # Go through opponent groups
-        all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
-        all_adj_labels = np.unique(all_adj_labels)
-        for opp_group_idx in all_adj_labels[np.nonzero(all_adj_labels)]:
-            opp_group = all_opp_groups == opp_group_idx
-            liberties = empties * ndimage.binary_dilation(opp_group)
-            if np.sum(liberties) <= 0:
-                # Killed group
-                opp_group_locs = np.argwhere(opp_group)
-                killed_groups.append(opp_group_locs)
-
-                state[opponent] *= 1 - opp_group
-
-        return killed_groups
 
     @staticmethod
     def get_children(state, canonical=False, padded=True):
@@ -182,15 +157,6 @@ class GoGame:
         if GoGame.get_game_ended(state):
             return np.zeros(GoGame.get_action_size(state))
         return np.append(1 - state[govars.INVD_CHNL].flatten(), 1)
-
-    @staticmethod
-    def action_2d_to_1d(action_2d, state):
-        size = state.shape[1]
-        if action_2d is None:
-            action_1d = size ** 2
-        else:
-            action_1d = action_2d[0] * size + action_2d[1]
-        return action_1d
 
     @staticmethod
     def get_liberties(state: np.ndarray):
@@ -265,37 +231,37 @@ class GoGame:
             state_utils.set_turn(state)
 
     @staticmethod
-    def random_symmetry(chunk):
+    def random_symmetry(image):
         """
-        Returns a random symmetry of the chunk
-        :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
+        Returns a random symmetry of the image
+        :param image: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
         :return:
         """
         orientation = np.random.randint(0, 8)
 
         if (orientation >> 0) % 2:
             # Horizontal flip
-            chunk = np.flip(chunk, 2)
+            image = np.flip(image, 2)
         if (orientation >> 1) % 2:
             # Vertical flip
-            chunk = np.flip(chunk, 1)
+            image = np.flip(image, 1)
         if (orientation >> 2) % 2:
             # Rotate 90 degrees
-            chunk = np.rot90(chunk, axes=(1, 2))
+            image = np.rot90(image, axes=(1, 2))
 
-        return chunk
+        return image
 
     @staticmethod
-    def get_symmetries(chunk):
+    def all_symmetries(image):
         """
-        :param chunk: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
+        :param image: A (C, BOARD_SIZE, BOARD_SIZE) numpy array, where C is any number
         :return: All 8 orientations that are symmetrical in a Go game over the 2nd and 3rd axes
         (i.e. rotations, flipping and combos of them)
         """
         symmetries = []
 
         for i in range(8):
-            x = chunk
+            x = image
             if (i >> 0) % 2:
                 # Horizontal flip
                 x = np.flip(x, 2)
