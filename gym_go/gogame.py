@@ -38,8 +38,8 @@ class GoGame:
         # Initialize basic variables
         board_shape = state.shape[1:]
         pass_idx = np.prod(board_shape)
-        action2d = action1d // board_shape[0], action1d % board_shape[1]
         passed = action1d == pass_idx
+        action2d = action1d // board_shape[0], action1d % board_shape[1]
 
         player = GoGame.turn(state)
         previously_passed = GoGame.prev_player_passed(state)
@@ -54,10 +54,10 @@ class GoGame:
                 # Game ended
                 state[govars.DONE_CHNL] = 1
         else:
-            # We did not pass
+            # Move was not pass
             state[govars.PASS_CHNL] = 0
 
-            # Check move is valid
+            # Assert move is valid
             assert state[govars.INVD_CHNL, action2d[0], action2d[1]] == 0, ("Invalid move", action2d)
 
             # Add piece
@@ -66,23 +66,24 @@ class GoGame:
             # Get adjacent location and check whether the piece will be surrounded by any piece
             adj_locs, surrounded = state_utils.adj_data(state, action2d)
 
-            # Update groups
-            killed_groups = state_utils.update_groups(state, adj_locs, player)
+            # Update pieces
+            killed_groups = state_utils.update_pieces(state, adj_locs, player)
 
-            # If only killed one group, and that one group was one piece, and piece set is surrounded by opponents,
+            # If only killed one group, and that one group was one piece, and piece set is surrounded,
             # activate ko protection
             if len(killed_groups) == 1 and surrounded:
                 killed_group = killed_groups[0]
                 if len(killed_group) == 1:
                     ko_protect = killed_group[0]
 
-        # Update illegal moves
+        # Update invalid moves
         state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect)
 
         # Switch turn
         state_utils.set_turn(state)
 
         if canonical:
+            # Set canonical form
             state = GoGame.canonical_form(state)
 
         return state
