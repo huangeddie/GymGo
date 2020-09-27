@@ -97,7 +97,7 @@ def update_pieces(state, adj_locs, player):
             opp_group_locs = np.argwhere(opp_group)
             killed_groups.append(opp_group_locs)
 
-            state[opponent] *= 1 - opp_group
+            state[opponent, opp_group_locs[:, 0], opp_group_locs[:, 1]] = 0
 
     return killed_groups
 
