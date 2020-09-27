@@ -83,14 +83,74 @@ class GoGame:
         return state
 
     @staticmethod
+    def batch_next_states(batch_states, batch_action1d, canonical=False):
+        # Deep copy the state to modify
+        batch_states = np.copy(batch_states)
+
+        # Initialize basic variables
+        board_shape = batch_states.shape[2:]
+        pass_idx = np.prod(board_shape)
+        batch_pass = np.nonzero(batch_action1d == pass_idx)
+        batch_non_pass = np.nonzero(batch_action1d != pass_idx)[0]
+        batch_prev_passed = GoGame.batch_prev_player_passed(batch_states)
+        batch_game_ended = np.nonzero(batch_prev_passed & (batch_action1d == pass_idx))
+        batch_action2d = np.array([batch_action1d[batch_non_pass] // board_shape[0],
+                                   batch_action1d[batch_non_pass] % board_shape[1]]).T
+
+        batch_players = GoGame.batch_turn(batch_states)
+        batch_non_pass_players = batch_players[batch_non_pass]
+        batch_ko_protect = np.empty(len(batch_states), dtype=object)
+
+        # Pass moves
+        batch_states[batch_pass, govars.PASS_CHNL] = 1
+        # Game ended
+        batch_states[batch_game_ended, govars.DONE_CHNL] = 1
+
+        # Non-pass moves
+        batch_states[batch_non_pass, govars.PASS_CHNL] = 0
+
+        # Assert all non-pass moves are valid
+        assert (batch_states[batch_non_pass, govars.INVD_CHNL, batch_action2d[:, 0], batch_action2d[:, 1]] == 0).all()
+
+        # Add piece
+        batch_states[batch_non_pass, batch_non_pass_players, batch_action2d[:, 0], batch_action2d[:, 1]] = 1
+
+        # Get adjacent location and check whether the piece will be surrounded by any piece
+        batch_adj_locs, batch_surrounded = state_utils.batch_adj_data(batch_states[batch_non_pass], batch_action2d)
+
+        # Update pieces
+        batch_killed_groups = state_utils.batch_update_pieces(batch_non_pass, batch_states, batch_adj_locs,
+                                                              batch_non_pass_players)
+
+        # Ko-protection
+        for i, (killed_groups, surrounded) in enumerate(zip(batch_killed_groups, batch_surrounded)):
+            # If only killed one group, and that one group was one piece, and piece set is surrounded,
+            # activate ko protection
+            if len(killed_groups) == 1 and surrounded:
+                killed_group = killed_groups[0]
+                if len(killed_group) == 1:
+                    batch_ko_protect[batch_non_pass[i]] = killed_group[0]
+
+        # Update invalid moves
+        batch_states[:, govars.INVD_CHNL] = state_utils.batch_compute_invalid_moves(batch_states, batch_players,
+                                                                                    batch_ko_protect)
+
+        # Switch turn
+        state_utils.batch_set_turn(batch_states)
+
+        if canonical:
+            # Set canonical form
+            batch_states = GoGame.batch_canonical_form(batch_states)
+
+        return batch_states
+
+    @staticmethod
     def children(state, canonical=False, padded=True):
         valid_moves = GoGame.valid_moves(state)
         n = len(valid_moves)
         valid_move_idcs = np.argwhere(valid_moves).flatten()
-        children = []
-        for move in valid_move_idcs:
-            child = GoGame.next_state(state, move, canonical)
-            children.append(child)
+        batch_states = np.tile(state[np.newaxis], (len(valid_move_idcs), 1, 1, 1))
+        children = GoGame.batch_next_states(batch_states, valid_move_idcs, canonical)
 
         if padded:
             padded_children = np.zeros((n, *state.shape))
@@ -111,8 +171,11 @@ class GoGame:
 
     @staticmethod
     def prev_player_passed(state):
-        m, n = state.shape[1:]
-        return np.count_nonzero(state[govars.PASS_CHNL] == 1) == m * n
+        return np.max(state[govars.PASS_CHNL] == 1) == 1
+
+    @staticmethod
+    def batch_prev_player_passed(batch_states):
+        return np.max(batch_states[:, govars.PASS_CHNL], axis=(1, 2)) == 1
 
     @staticmethod
     def game_ended(state):
@@ -143,7 +206,11 @@ class GoGame:
         :param state:
         :return: Who's turn it is (govars.BLACK/govars.WHITE)
         """
-        return int(state[govars.TURN_CHNL, 0, 0])
+        return int(np.max(state[govars.TURN_CHNL]))
+
+    @staticmethod
+    def batch_turn(batch_state):
+        return np.max(batch_state[:, govars.TURN_CHNL], axis=(1, 2)).astype(np.int)
 
     @staticmethod
     def valid_moves(state):
@@ -212,18 +279,31 @@ class GoGame:
     @staticmethod
     def canonical_form(state):
         state = np.copy(state)
-        player = GoGame.turn(state)
-        if player == govars.BLACK:
-            return state
-        else:
-            assert player == govars.WHITE
+        if GoGame.turn(state) == govars.WHITE:
             num_channels = state.shape[0]
             channels = np.arange(num_channels)
             channels[govars.BLACK] = govars.WHITE
             channels[govars.WHITE] = govars.BLACK
-            can_state = state[channels]
-            state_utils.set_turn(can_state)
-            return can_state
+            state = state[channels]
+            state_utils.set_turn(state)
+        return state
+
+    @staticmethod
+    def batch_canonical_form(batch_state):
+        batch_state = np.copy(batch_state)
+        batch_player = GoGame.batch_turn(batch_state)
+        white_players_idcs = np.nonzero(batch_player == govars.WHITE)[0]
+
+        num_channels = batch_state.shape[1]
+        channels = np.arange(num_channels)
+        channels[govars.BLACK] = govars.WHITE
+        channels[govars.WHITE] = govars.BLACK
+
+        for i in white_players_idcs:
+            batch_state[i] = batch_state[i, channels]
+
+        state_utils.batch_set_turn(batch_state)
+        return batch_state
 
     @staticmethod
     def random_symmetry(image):
