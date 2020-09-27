@@ -73,7 +73,7 @@ def compute_invalid_moves(state, player, ko_protect=None):
 
 
 def update_pieces(state, adj_locs, player):
-    opponent = 1 - pXlayer
+    opponent = 1 - player
     killed_groups = []
 
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
