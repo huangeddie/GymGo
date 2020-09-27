@@ -48,7 +48,7 @@ class TestGoEnvBasics(unittest.TestCase):
     def test_preserve_original_state(self):
         state = self.env.reset()
         original_state = np.copy(state)
-        self.env.gogame.get_next_state(state, 0)
+        self.env.gogame.next_state(state, 0)
         assert (original_state == state).all()
 
     def test_black_moves_first(self):
@@ -158,7 +158,7 @@ class TestGoEnvBasics(unittest.TestCase):
         env.reset()
         for step, libs in zip(steps, libs):
             state, _, _, _ = env.step(step)
-            blacklibs, whitelibs = env.gogame.get_num_liberties(state)
+            blacklibs, whitelibs = env.gogame.num_liberties(state)
             self.assertEqual(blacklibs, libs[0], state)
             self.assertEqual(whitelibs, libs[1], state)
 
@@ -168,7 +168,7 @@ class TestGoEnvBasics(unittest.TestCase):
         env.reset()
         for step, libs in zip(steps, libs):
             state, _, _, _ = env.step(step)
-            blacklibs, whitelibs = env.gogame.get_num_liberties(state)
+            blacklibs, whitelibs = env.gogame.num_liberties(state)
             self.assertEqual(blacklibs, libs[0], state)
             self.assertEqual(whitelibs, libs[1], state)
 

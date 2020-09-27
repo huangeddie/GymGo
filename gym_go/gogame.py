@@ -22,13 +22,13 @@ The state of the game is a numpy array
 class GoGame:
 
     @staticmethod
-    def get_init_board(size):
+    def init_board(size):
         # return initial board (numpy board)
         state = np.zeros((govars.NUM_CHNLS, size, size))
         return state
 
     @staticmethod
-    def get_next_state(state, action1d, canonical=False):
+    def next_state(state, action1d, canonical=False):
         """
         Does not change the given state
         """
@@ -43,7 +43,7 @@ class GoGame:
         passed = action1d == pass_idx
 
         player = state_utils.get_turn(state)
-        previously_passed = GoGame.get_prev_player_passed(state)
+        previously_passed = GoGame.prev_player_passed(state)
 
         ko_protect = None
 
@@ -84,18 +84,18 @@ class GoGame:
         state_utils.set_turn(state)
 
         if canonical:
-            GoGame.set_canonical_form(state, 1 - player)
+            state = GoGame.canonical_form(state)
 
         return state
 
     @staticmethod
-    def get_children(state, canonical=False, padded=True):
-        valid_moves = GoGame.get_valid_moves(state)
+    def children(state, canonical=False, padded=True):
+        valid_moves = GoGame.valid_moves(state)
         n = len(valid_moves)
         valid_move_idcs = np.argwhere(valid_moves).flatten()
         children = []
         for move in valid_move_idcs:
-            child = GoGame.get_next_state(state, move, canonical)
+            child = GoGame.next_state(state, move, canonical)
             children.append(child)
 
         if padded:
@@ -105,7 +105,7 @@ class GoGame:
         return children
 
     @staticmethod
-    def get_action_size(state=None, board_size: int = None):
+    def action_size(state=None, board_size: int = None):
         # return number of actions
         if state is not None:
             m, n = state_utils.get_board_size(state)
@@ -116,12 +116,12 @@ class GoGame:
         return m * n + 1
 
     @staticmethod
-    def get_prev_player_passed(state):
+    def prev_player_passed(state):
         m, n = state_utils.get_board_size(state)
         return np.count_nonzero(state[govars.PASS_CHNL] == 1) == m * n
 
     @staticmethod
-    def get_game_ended(state):
+    def game_ended(state):
         """
         :param state:
         :return: 0/1 = game not ended / game ended respectively
@@ -130,8 +130,8 @@ class GoGame:
         return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
     @staticmethod
-    def get_winning(state, komi=0):
-        black_area, white_area = GoGame.get_areas(state)
+    def winning(state, komi=0):
+        black_area, white_area = GoGame.areas(state)
         area_difference = black_area - white_area
         komi_correction = area_difference - komi
 
@@ -144,7 +144,7 @@ class GoGame:
             return -1
 
     @staticmethod
-    def get_turn(state):
+    def turn(state):
         """
         :param state:
         :return: Who's turn it is (govars.BLACK/govars.WHITE)
@@ -152,22 +152,22 @@ class GoGame:
         return state_utils.get_turn(state)
 
     @staticmethod
-    def get_valid_moves(state):
+    def valid_moves(state):
         # return a fixed size binary vector
-        if GoGame.get_game_ended(state):
-            return np.zeros(GoGame.get_action_size(state))
+        if GoGame.game_ended(state):
+            return np.zeros(GoGame.action_size(state))
         return np.append(1 - state[govars.INVD_CHNL].flatten(), 1)
 
     @staticmethod
-    def get_liberties(state: np.ndarray):
+    def liberties(state: np.ndarray):
         return state_utils.get_liberties(state)
 
     @staticmethod
-    def get_num_liberties(state: np.ndarray):
+    def num_liberties(state: np.ndarray):
         return state_utils.get_num_liberties(state)
 
     @staticmethod
-    def get_areas(state):
+    def areas(state):
         '''
         Return black area, white area
         '''
@@ -195,15 +195,9 @@ class GoGame:
         return black_area, white_area
 
     @staticmethod
-    def get_canonical_form(state):
-        """
-        The returned state is a shallow copy of the given state
-        :param state:
-        :param player:
-        :return:
-        """
-
-        player = GoGame.get_turn(state)
+    def canonical_form(state):
+        state = np.copy(state)
+        player = GoGame.turn(state)
         if player == govars.BLACK:
             return state
         else:
@@ -215,20 +209,6 @@ class GoGame:
             can_state = state[channels]
             state_utils.set_turn(can_state)
             return can_state
-
-    @staticmethod
-    def set_canonical_form(state, player):
-        """
-        Assumes the turn of all states is player
-        The returned state is a seperate copy of the given state
-        :param state:
-        :param player:
-        :return:
-        """
-
-        if player == govars.WHITE:
-            state[[govars.BLACK, govars.WHITE]] = state[[govars.WHITE, govars.BLACK]]
-            state_utils.set_turn(state)
 
     @staticmethod
     def random_symmetry(image):
@@ -325,10 +305,10 @@ class GoGame:
             board_str += '----' * size + '-'
             board_str += '\n'
 
-        black_area, white_area = GoGame.get_areas(state)
-        game_ended = GoGame.get_game_ended(state)
-        prev_player_passed = GoGame.get_prev_player_passed(state)
-        turn = GoGame.get_turn(state)
+        black_area, white_area = GoGame.areas(state)
+        game_ended = GoGame.game_ended(state)
+        prev_player_passed = GoGame.prev_player_passed(state)
+        turn = GoGame.turn(state)
         board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('B' if turn == 0 else 'W',
                                                                                 prev_player_passed,
                                                                                 game_ended)

@@ -31,11 +31,11 @@ class GoEnv(gym.Env):
         '''
         self.size = size
         self.komi = komi
-        self.state = GoGame.get_init_board(size)
+        self.state = GoGame.init_board(size)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
-        self.action_space = gym.spaces.Discrete(GoGame.get_action_size(self.state))
+        self.action_space = gym.spaces.Discrete(GoGame.action_size(self.state))
         self.done = False
 
     def reset(self):
@@ -43,7 +43,7 @@ class GoEnv(gym.Env):
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state = GoGame.get_init_board(self.size)
+        self.state = GoGame.init_board(self.size)
         self.done = False
         return np.copy(self.state)
 
@@ -60,21 +60,21 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
-        self.state = GoGame.get_next_state(self.state, action)
-        self.done = GoGame.get_game_ended(self.state)
+        self.state = GoGame.next_state(self.state, action)
+        self.done = GoGame.game_ended(self.state)
         return np.copy(self.state), self.get_reward(), self.done, self.get_info()
 
     def game_ended(self):
         return self.done
 
     def turn(self):
-        return GoGame.get_turn(self.state)
+        return GoGame.turn(self.state)
 
     def prev_player_passed(self):
-        return GoGame.get_prev_player_passed(self.state)
+        return GoGame.prev_player_passed(self.state)
 
     def get_valid_moves(self):
-        return GoGame.get_valid_moves(self.state)
+        return GoGame.valid_moves(self.state)
 
     def action_2d_to_1d(self, action_2d):
         if action_2d is None:
@@ -93,9 +93,9 @@ class GoEnv(gym.Env):
         :return: Debugging info for the state
         """
         return {
-            'prev_player_passed': GoGame.get_prev_player_passed(self.state),
-            'turn': 'b' if GoGame.get_turn(self.state) == GoEnv.govars.BLACK else 'w',
-            'game_ended': GoGame.get_game_ended(self.state)
+            'prev_player_passed': GoGame.prev_player_passed(self.state),
+            'turn': 'b' if GoGame.turn(self.state) == GoEnv.govars.BLACK else 'w',
+            'game_ended': GoGame.game_ended(self.state)
         }
 
     def get_state(self):
@@ -108,19 +108,19 @@ class GoEnv(gym.Env):
         """
         :return: canonical shallow copy of state
         """
-        return GoGame.get_canonical_form(self.state)
+        return GoGame.canonical_form(self.state)
 
     def get_children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.get_children(self.state, canonical, padded)
+        return GoGame.children(self.state, canonical, padded)
 
     def get_winning(self):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
-        return GoGame.get_winning(self.state, self.komi)
+        return GoGame.winning(self.state, self.komi)
 
     def get_winner(self):
         """
@@ -147,7 +147,7 @@ class GoEnv(gym.Env):
             return self.get_winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
-            black_area, white_area = GoGame.get_areas(self.state)
+            black_area, white_area = GoGame.areas(self.state)
             area_difference = black_area - white_area
             komi_correction = area_difference - self.komi
             if self.game_ended():
