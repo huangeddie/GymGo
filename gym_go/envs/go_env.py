@@ -3,8 +3,8 @@ from enum import Enum
 import gym
 import numpy as np
 
-from gym_go import govars, rendering
-from gym_go.gogame import GoGame
+from gym_go import govars, rendering, gogame
+
 
 
 class RewardMethod(Enum):
@@ -19,8 +19,8 @@ class RewardMethod(Enum):
 
 class GoEnv(gym.Env):
     metadata = {'render.modes': ['terminal', 'human']}
-    gogame = GoGame()
     govars = govars
+    gogame = gogame
 
     def __init__(self, size, komi=0, reward_method='real'):
         '''
@@ -31,11 +31,11 @@ class GoEnv(gym.Env):
         '''
         self.size = size
         self.komi = komi
-        self.state_ = GoGame.init_board(size)
+        self.state_ = gogame.init_board(size)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
-        self.action_space = gym.spaces.Discrete(GoGame.action_size(self.state_))
+        self.action_space = gym.spaces.Discrete(gogame.action_size(self.state_))
         self.done = False
 
     def reset(self):
@@ -43,7 +43,7 @@ class GoEnv(gym.Env):
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state_ = GoGame.init_board(self.size)
+        self.state_ = gogame.init_board(self.size)
         self.done = False
         return np.copy(self.state_)
 
@@ -60,21 +60,21 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
-        self.state_ = GoGame.next_state(self.state_, action, canonical=False)
-        self.done = GoGame.game_ended(self.state_)
+        self.state_ = gogame.next_state(self.state_, action, canonical=False)
+        self.done = gogame.game_ended(self.state_)
         return np.copy(self.state_), self.reward(), self.done, self.info()
 
     def game_ended(self):
         return self.done
 
     def turn(self):
-        return GoGame.turn(self.state_)
+        return gogame.turn(self.state_)
 
     def prev_player_passed(self):
-        return GoGame.prev_player_passed(self.state_)
+        return gogame.prev_player_passed(self.state_)
 
     def valid_moves(self):
-        return GoGame.valid_moves(self.state_)
+        return gogame.valid_moves(self.state_)
 
     def uniform_random_action(self):
         valid_moves = self.valid_moves()
@@ -86,9 +86,9 @@ class GoEnv(gym.Env):
         :return: Debugging info for the state
         """
         return {
-            'turn': GoGame.turn(self.state_),
-            'invalid_moves': GoGame.invalid_moves(self.state_),
-            'prev_player_passed': GoGame.prev_player_passed(self.state_),
+            'turn': gogame.turn(self.state_),
+            'invalid_moves': gogame.invalid_moves(self.state_),
+            'prev_player_passed': gogame.prev_player_passed(self.state_),
         }
 
     def state(self):
@@ -101,19 +101,19 @@ class GoEnv(gym.Env):
         """
         :return: canonical shallow copy of state
         """
-        return GoGame.canonical_form(self.state_)
+        return gogame.canonical_form(self.state_)
 
     def children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.children(self.state_, canonical, padded)
+        return gogame.children(self.state_, canonical, padded)
 
     def winning(self):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
-        return GoGame.winning(self.state_, self.komi)
+        return gogame.winning(self.state_, self.komi)
 
     def winner(self):
         """
@@ -140,7 +140,7 @@ class GoEnv(gym.Env):
             return self.winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
-            black_area, white_area = GoGame.areas(self.state_)
+            black_area, white_area = gogame.areas(self.state_)
             area_difference = black_area - white_area
             komi_correction = area_difference - self.komi
             if self.game_ended():
@@ -150,7 +150,7 @@ class GoEnv(gym.Env):
             raise Exception("Unknown Reward Method")
 
     def __str__(self):
-        return GoGame.str(self.state_)
+        return gogame.str(self.state_)
 
     def close(self):
         if hasattr(self, 'window'):
