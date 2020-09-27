@@ -41,7 +41,6 @@ class GoGame:
         previously_passed = GoGame.prev_player_passed(state)
         ko_protect = None
 
-        # Pass?
         if passed:
             # We passed
             state[govars.PASS_CHNL] = 1
