@@ -206,6 +206,22 @@ class TestGoEnvBasics(unittest.TestCase):
 
         env.close()
 
+    def test_children(self):
+        for canonical in [False, True]:
+            for _ in range(20):
+                action = self.env.uniform_random_action()
+                self.env.step(action)
+            state = self.env.state()
+            children = self.env.children(canonical, padded=True)
+            valid_moves = self.env.valid_moves()
+            for a in range(len(valid_moves)):
+                if valid_moves[a]:
+                    child = self.env.gogame.next_state(state, a, canonical)
+                    equal = children[a] == child
+                    self.assertTrue(equal.all(), (canonical, np.argwhere(~equal)))
+                else:
+                    self.assertTrue((children[a] == 0).all())
+
     def test_real_reward(self):
         env = gym.make('gym_go:go-v0', size=7, reward_method='real')
 
