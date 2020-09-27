@@ -76,13 +76,6 @@ class GoEnv(gym.Env):
     def valid_moves(self):
         return GoGame.valid_moves(self.state_)
 
-    def action_2d_to_1d(self, action_2d):
-        if action_2d is None:
-            action_1d = self.size ** 2
-        else:
-            action_1d = action_2d[0] * self.size + action_2d[1]
-        return action_1d
-
     def uniform_random_action(self):
         valid_moves = self.valid_moves()
         valid_move_idcs = np.argwhere(valid_moves).flatten()
