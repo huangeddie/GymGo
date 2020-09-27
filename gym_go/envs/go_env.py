@@ -60,7 +60,7 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
-        self.state = GoGame.next_state(self.state, action)
+        self.state = GoGame.next_state(self.state, action, canonical=False)
         self.done = GoGame.game_ended(self.state)
         return np.copy(self.state), self.reward(), self.done, self.info()
 
