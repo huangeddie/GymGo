@@ -65,7 +65,7 @@ class TestGoEnvBasics(unittest.TestCase):
             # For the first move at i == 0, black went so now it should be white's turn
             state, reward, done, info = self.env.step((i, 0))
             self.assertIn('turn', info)
-            self.assertEqual(info['turn'], 'w' if i % 2 == 0 else 'b', '{} {}'.format(i, info['turn']))
+            self.assertEqual(info['turn'], 1 if i % 2 == 0 else 0)
 
     def test_multiple_action_formats(self):
         for _ in range(10):
@@ -96,7 +96,7 @@ class TestGoEnvBasics(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[govars.PASS_CHNL] == 1), 49)
 
         self.assertIn('turn', info)
-        self.assertEqual(info['turn'], 'w')
+        self.assertEqual(info['turn'], 1)
 
         # Make a move
         state, reward, done, info = self.env.step((0, 0))
@@ -116,7 +116,7 @@ class TestGoEnvBasics(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]]), 2, state)
 
         self.assertIn('turn', info)
-        self.assertEqual(info['turn'], 'w')
+        self.assertEqual(info['turn'], 1)
 
         # Pass
         state, reward, done, info = self.env.step(None)
@@ -124,7 +124,7 @@ class TestGoEnvBasics(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]]), 2,
                          state[[govars.BLACK, govars.WHITE, govars.INVD_CHNL]])
         self.assertIn('turn', info)
-        self.assertEqual(info['turn'], 'b')
+        self.assertEqual(info['turn'], 0)
 
     def test_game_ends(self):
         state, reward, done, info = self.env.step(None)
