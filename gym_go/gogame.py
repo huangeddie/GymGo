@@ -143,11 +143,26 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
     return batch_states
 
 
-def valid_moves(state):
+def invalid_moves(state):
     # return a fixed size binary vector
     if game_ended(state):
         return np.zeros(action_size(state))
-    return np.append(1 - state[govars.INVD_CHNL].flatten(), 1)
+    return np.append(state[govars.INVD_CHNL].flatten(), 0)
+
+
+def valid_moves(state):
+    return 1 - invalid_moves(state)
+
+
+def batch_invalid_moves(batch_state):
+    n = len(batch_state)
+    batch_invalid_moves_bool = batch_state[:, govars.INVD_CHNL].reshape(n, -1)
+    batch_invalid_moves_bool = np.append(batch_invalid_moves_bool, np.zeros((n, 1)), axis=1)
+    return batch_invalid_moves_bool
+
+
+def batch_valid_moves(batch_state):
+    return 1 - batch_invalid_moves(batch_state)
 
 
 def children(state, canonical=False, padded=True):
@@ -162,13 +177,6 @@ def children(state, canonical=False, padded=True):
         padded_children[valid_move_idcs] = children
         children = padded_children
     return children
-
-
-def invalid_moves(state):
-    # return a fixed size binary vector
-    if game_ended(state):
-        return np.zeros(action_size(state))
-    return np.append(state[govars.INVD_CHNL].flatten(), 0)
 
 
 def action_size(state=None, board_size: int = None):
