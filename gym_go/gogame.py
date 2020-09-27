@@ -28,10 +28,6 @@ class GoGame:
 
     @staticmethod
     def next_state(state, action1d, canonical=False):
-        """
-        Does not change the given state
-        """
-
         # Deep copy the state to modify
         state = np.copy(state)
 
@@ -43,7 +39,6 @@ class GoGame:
 
         player = GoGame.turn(state)
         previously_passed = GoGame.prev_player_passed(state)
-
         ko_protect = None
 
         # Pass?
