@@ -31,11 +31,11 @@ class GoEnv(gym.Env):
         '''
         self.size = size
         self.komi = komi
-        self.state = GoGame.init_board(size)
+        self.state_ = GoGame.init_board(size)
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
-        self.action_space = gym.spaces.Discrete(GoGame.action_size(self.state))
+        self.action_space = gym.spaces.Discrete(GoGame.action_size(self.state_))
         self.done = False
 
     def reset(self):
@@ -43,9 +43,9 @@ class GoEnv(gym.Env):
         Reset state, go_board, curr_player, prev_player_passed,
         done, return state
         '''
-        self.state = GoGame.init_board(self.size)
+        self.state_ = GoGame.init_board(self.size)
         self.done = False
-        return np.copy(self.state)
+        return np.copy(self.state_)
 
     def step(self, action):
         '''
@@ -60,21 +60,21 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
-        self.state = GoGame.next_state(self.state, action, canonical=False)
-        self.done = GoGame.game_ended(self.state)
-        return np.copy(self.state), self.reward(), self.done, self.info()
+        self.state_ = GoGame.next_state(self.state_, action, canonical=False)
+        self.done = GoGame.game_ended(self.state_)
+        return np.copy(self.state_), self.reward(), self.done, self.info()
 
     def game_ended(self):
         return self.done
 
     def turn(self):
-        return GoGame.turn(self.state)
+        return GoGame.turn(self.state_)
 
     def prev_player_passed(self):
-        return GoGame.prev_player_passed(self.state)
+        return GoGame.prev_player_passed(self.state_)
 
     def valid_moves(self):
-        return GoGame.valid_moves(self.state)
+        return GoGame.valid_moves(self.state_)
 
     def action_2d_to_1d(self, action_2d):
         if action_2d is None:
@@ -93,34 +93,34 @@ class GoEnv(gym.Env):
         :return: Debugging info for the state
         """
         return {
-            'turn': GoGame.turn(self.state),
-            'invalid_moves': GoGame.invalid_moves(self.state),
-            'prev_player_passed': GoGame.prev_player_passed(self.state),
+            'turn': GoGame.turn(self.state_),
+            'invalid_moves': GoGame.invalid_moves(self.state_),
+            'prev_player_passed': GoGame.prev_player_passed(self.state_),
         }
 
     def state(self):
         """
         :return: copy of state
         """
-        return np.copy(self.state)
+        return np.copy(self.state_)
 
     def canonical_state(self):
         """
         :return: canonical shallow copy of state
         """
-        return GoGame.canonical_form(self.state)
+        return GoGame.canonical_form(self.state_)
 
     def children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
-        return GoGame.children(self.state, canonical, padded)
+        return GoGame.children(self.state_, canonical, padded)
 
     def winning(self):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
-        return GoGame.winning(self.state, self.komi)
+        return GoGame.winning(self.state_, self.komi)
 
     def winner(self):
         """
@@ -147,7 +147,7 @@ class GoEnv(gym.Env):
             return self.winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
-            black_area, white_area = GoGame.areas(self.state)
+            black_area, white_area = GoGame.areas(self.state_)
             area_difference = black_area - white_area
             komi_correction = area_difference - self.komi
             if self.game_ended():
@@ -157,7 +157,7 @@ class GoEnv(gym.Env):
             raise Exception("Unknown Reward Method")
 
     def __str__(self):
-        return GoGame.str(self.state)
+        return GoGame.str(self.state_)
 
     def close(self):
         if hasattr(self, 'window'):
@@ -205,7 +205,7 @@ class GoEnv(gym.Env):
                 rendering.draw_grid(batch, delta, self.size, lower_grid_coord, upper_grid_coord)
 
                 # info on top of the board
-                rendering.draw_info(batch, window_width, window_height, upper_grid_coord, self.state)
+                rendering.draw_info(batch, window_width, window_height, upper_grid_coord, self.state_)
 
                 # Inform user what they can do
                 rendering.draw_command_labels(batch, window_width, window_height)
@@ -215,7 +215,7 @@ class GoEnv(gym.Env):
                 batch.draw()
 
                 # draw the pieces
-                rendering.draw_pieces(batch, lower_grid_coord, delta, piece_r, self.size, self.state)
+                rendering.draw_pieces(batch, lower_grid_coord, delta, piece_r, self.size, self.state_)
 
             @window.event
             def on_mouse_press(x, y, button, modifiers):
