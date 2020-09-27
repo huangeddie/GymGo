@@ -1,7 +1,8 @@
 import numpy as np
-from gym_go import govars
 from scipy import ndimage
 from scipy.ndimage import measurements
+
+from gym_go import govars
 
 ##############################################
 # All set operations are in-place operations
@@ -11,32 +12,10 @@ surround_struct = np.array([[0, 1, 0],
                             [1, 0, 1],
                             [0, 1, 0]])
 
-
-def get_group_map(state: np.ndarray):
-    group_map = [set(), set()]
-    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    for player in [govars.BLACK, govars.WHITE]:
-        pieces = state[player]
-        labels, num_groups = measurements.label(pieces)
-        for group_idx in range(1, num_groups + 1):
-            group = govars.Group()
-
-            group_matrix = (labels == group_idx)
-            liberty_matrix = ndimage.binary_dilation(group_matrix) * (1 - all_pieces)
-            liberties = np.argwhere(liberty_matrix)
-            for liberty in liberties:
-                group.liberties.add(tuple(liberty))
-
-            locations = np.argwhere(group_matrix)
-            for loc in locations:
-                loc = tuple(loc)
-                group.locations.add(loc)
-                group_map[player].add(group)
-
-    return group_map
+neighbor_deltas = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
 
 
-def get_invalid_moves(state, group_map, player, ko_protect=None):
+def compute_invalid_moves(state, player, ko_protect=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -51,114 +30,87 @@ def get_invalid_moves(state, group_map, player, ko_protect=None):
             move more than one liberty
     """
 
+    # All pieces and empty spaces
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+    empties = 1 - all_pieces
+
+    # Setup invalid and valid arrays
+    possible_invalid_array = np.zeros(state.shape[1:])
+    definite_valids_array = np.zeros(state.shape[1:])
+
+    # Get all groups
+    all_own_groups, num_own_groups = measurements.label(state[player])
+    all_opp_groups, num_opp_groups = measurements.label(state[1 - player])
+    expanded_own_groups = np.zeros((num_own_groups, *state.shape[1:]))
+    expanded_opp_groups = np.zeros((num_opp_groups, *state.shape[1:]))
+
+    # Expand the groups such that each group is in its own channel
+    for i in range(num_own_groups):
+        expanded_own_groups[i] = all_own_groups == (i + 1)
+
+    for i in range(num_opp_groups):
+        expanded_opp_groups[i] = all_opp_groups == (i + 1)
+
+    # Get all liberties in the expanded form
+    all_own_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_own_groups, surround_struct[np.newaxis])
+    all_opp_liberties = empties[np.newaxis] * ndimage.binary_dilation(expanded_opp_groups, surround_struct[np.newaxis])
+
+    own_liberty_counts = np.sum(all_own_liberties, axis=(1, 2))
+    opp_liberty_counts = np.sum(all_opp_liberties, axis=(1, 2))
 
     # Possible invalids are on single liberties of opponent groups and on multi-liberties of own groups
-    invalid_array = get_possible_invalids(state, group_map, player)
+    # Definite valids are on single liberties of own groups, multi-liberties of opponent groups
+    # or you are not surrounded
+    possible_invalid_array += np.sum(all_own_liberties[own_liberty_counts > 1], axis=0)
+    possible_invalid_array += np.sum(all_opp_liberties[opp_liberty_counts == 1], axis=0)
 
+    definite_valids_array += np.sum(all_own_liberties[own_liberty_counts == 1], axis=0)
+    definite_valids_array += np.sum(all_opp_liberties[opp_liberty_counts > 1], axis=0)
+
+    # All invalid moves are occupied spaces + (possible invalids minus the definite valids and it's surrounded)
     surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1) == 4
+    invalid_moves = all_pieces + possible_invalid_array * (definite_valids_array == 0) * surrounded
 
-    invalid_moves = surrounded * invalid_array + all_pieces
+    # Ko-protection
     if ko_protect is not None:
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
-    return invalid_moves
+    return invalid_moves > 0
 
 
-def get_possible_invalids(state, group_map, player):
-    invalid_array = np.zeros(state.shape[1:])
-    possible_invalids, definite_valids = set(), set()
-    own_groups, opp_groups = group_map[player], group_map[1 - player]
-    for group in opp_groups:
-        if len(group.liberties) == 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can connect to other groups with multi liberties
-            definite_valids.update(group.liberties)
-    for group in own_groups:
-        if len(group.liberties) > 1:
-            possible_invalids.update(group.liberties)
-        else:
-            # Can kill
-            definite_valids.update(group.liberties)
-    possible_invalids.difference_update(definite_valids)
+def update_pieces(state, adj_locs, player):
+    opponent = 1 - player
+    killed_groups = []
 
-    for loc in possible_invalids:
-        invalid_array[loc[0], loc[1]] = 1
-    return invalid_array
-
-
-def get_adj_data(state, action2d):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    surrounded = ndimage.convolve(all_pieces, surround_struct, mode='constant', cval=1)
-    surrounded = surrounded[action2d[0], action2d[1]] == 4
+    empties = 1 - all_pieces
 
-    locs_array = np.zeros(state.shape[1:])
-    locs_array[action2d[0], action2d[1]] = 1
+    all_opp_groups, _ = ndimage.measurements.label(state[opponent])
 
-    dilated = ndimage.binary_dilation(locs_array)
-    neighbors = dilated - locs_array
-    adj_locs = np.argwhere(neighbors)
+    # Go through opponent groups
+    all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
+    all_adj_labels = np.unique(all_adj_labels)
+    for opp_group_idx in all_adj_labels[np.nonzero(all_adj_labels)]:
+        opp_group = all_opp_groups == opp_group_idx
+        liberties = empties * ndimage.binary_dilation(opp_group)
+        if np.sum(liberties) <= 0:
+            # Killed group
+            opp_group_locs = np.argwhere(opp_group)
+            state[opponent, opp_group_locs[:, 0], opp_group_locs[:, 1]] = 0
+            killed_groups.append(opp_group_locs)
 
-    return adj_locs, surrounded
-
-
-def get_adjacent_groups(group_map, adjacent_locations, player):
-    our_groups, opponent_groups = set(), set()
-    for adj_loc in adjacent_locations:
-        adj_loc = tuple(adj_loc)
-        found = False
-        for group in group_map[player]:
-            if adj_loc in group.locations:
-                our_groups.add(group)
-                found = True
-                break
-
-        if not found:
-            for group in group_map[1 - player]:
-                if adj_loc in group.locations:
-                    opponent_groups.add(group)
-                    break
-    return our_groups, opponent_groups
+    return killed_groups
 
 
-def get_liberties(state: np.ndarray):
-    blacks = state[govars.BLACK]
-    whites = state[govars.WHITE]
+def adj_data(state, action2d):
+    neighbors = neighbor_deltas + action2d
+    valid = (neighbors >= 0) & (neighbors < state.shape[1])
+    valid = np.prod(valid, axis=1)
+    neighbors = neighbors[np.nonzero(valid)]
+
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+    surrounded = (all_pieces[neighbors[:, 0], neighbors[:, 1]] > 0).all()
 
-    liberty_list = []
-    for player_pieces in [blacks, whites]:
-        liberties = ndimage.binary_dilation(player_pieces)
-        liberties *= (1 - all_pieces).astype(np.bool)
-        liberty_list.append(liberties)
-
-    return liberty_list[0], liberty_list[1]
-
-
-def get_num_liberties(state: np.ndarray):
-    '''
-    :param state:
-    :return: Total black and white liberties
-    '''
-    black_liberties, white_liberties = get_liberties(state)
-    black_liberties = np.count_nonzero(black_liberties)
-    white_liberties = np.count_nonzero(white_liberties)
-
-    return black_liberties, white_liberties
-
-
-def get_board_size(state):
-    assert state.shape[1] == state.shape[2]
-    return (state.shape[1], state.shape[2])
-
-
-def get_turn(state):
-    """
-    Returns who's turn it is (govars.BLACK/govars.WHITE)
-    :param state:
-    :return:
-    """
-    return int(state[govars.TURN_CHNL, 0, 0])
+    return neighbors, surrounded
 
 
 def set_turn(state):

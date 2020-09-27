@@ -25,10 +25,10 @@ def draw_command_labels(batch, window_width, window_height):
 
 
 def draw_info(batch, window_width, window_height, upper_grid_coord, state):
-    turn = GoGame.get_turn(state)
+    turn = GoGame.turn(state)
     turn_str = 'B' if turn == govars.BLACK else 'W'
-    prev_player_passed = GoGame.get_prev_player_passed(state)
-    game_ended = GoGame.get_game_ended(state)
+    prev_player_passed = GoGame.prev_player_passed(state)
+    game_ended = GoGame.game_ended(state)
     info_label = "Turn: {}\nPassed: {}\nGame: {}".format(turn_str, prev_player_passed,
                                                          "OVER" if game_ended else "ONGOING")
 
@@ -37,7 +37,7 @@ def draw_info(batch, window_width, window_height, upper_grid_coord, state):
                       align='right', multiline=True)
 
     # Areas
-    black_area, white_area = GoGame.get_areas(state)
+    black_area, white_area = GoGame.areas(state)
     pyglet.text.Label("{}B | {}W".format(black_area, white_area), font_name='Helvetica', font_size=16,
                       x=window_width / 2, y=upper_grid_coord + 80, anchor_x='center', color=(0, 0, 0, 192), batch=batch,
                       width=window_width, align='center')
