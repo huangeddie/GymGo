@@ -4,10 +4,6 @@ from scipy.ndimage import measurements
 
 from gym_go import govars
 
-##############################################
-# All set operations are in-place operations
-##############################################
-
 group_struct = np.array([[[0, 0, 0],
                           [0, 0, 0],
                           [0, 0, 0]],
