@@ -95,9 +95,8 @@ def update_pieces(state, adj_locs, player):
         if np.sum(liberties) <= 0:
             # Killed group
             opp_group_locs = np.argwhere(opp_group)
-            killed_groups.append(opp_group_locs)
-
             state[opponent, opp_group_locs[:, 0], opp_group_locs[:, 1]] = 0
+            killed_groups.append(opp_group_locs)
 
     return killed_groups
 
