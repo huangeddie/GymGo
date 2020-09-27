@@ -4,22 +4,21 @@ from sklearn import preprocessing
 
 from gym_go import state_utils, govars
 
-"""
-The state of the game is a numpy array
-* Are values are either 0 or 1
-
-* Shape [NUM_CHNLS, SIZE, SIZE]
-
-0 - Black pieces
-1 - White pieces
-2 - Turn (0 - black, 1 - white)
-3 - Invalid moves (including ko-protection)
-4 - Previous move was a pass
-5 - Game over
-"""
-
 
 class GoGame:
+    """
+    The state of the game is a numpy array
+    * Are values are either 0 or 1
+
+    * Shape [NUM_CHNLS, SIZE, SIZE]
+
+    0 - Black pieces
+    1 - White pieces
+    2 - Turn (0 - black, 1 - white)
+    3 - Invalid moves (including ko-protection)
+    4 - Previous move was a pass
+    5 - Game over
+    """
 
     @staticmethod
     def init_board(size):
