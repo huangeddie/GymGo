@@ -15,7 +15,7 @@ surround_struct = np.array([[0, 1, 0],
 neighbor_deltas = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
 
 
-def get_invalid_moves(state, player, ko_protect=None):
+def compute_invalid_moves(state, player, ko_protect=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -71,6 +71,7 @@ def get_invalid_moves(state, player, ko_protect=None):
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
     return invalid_moves > 0
 
+
 def update_groups(state, adj_locs, player):
     opponent = 1 - player
     killed_groups = []
@@ -95,7 +96,8 @@ def update_groups(state, adj_locs, player):
 
     return killed_groups
 
-def get_adj_data(state, action2d):
+
+def adj_data(state, action2d):
     neighbors = neighbor_deltas + action2d
     valid = (neighbors >= 0) & (neighbors < state.shape[1])
     valid = np.prod(valid, axis=1)
@@ -105,46 +107,6 @@ def get_adj_data(state, action2d):
     surrounded = (all_pieces[neighbors[:, 0], neighbors[:, 1]] > 0).all()
 
     return neighbors, surrounded
-
-
-def get_liberties(state: np.ndarray):
-    blacks = state[govars.BLACK]
-    whites = state[govars.WHITE]
-    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-
-    liberty_list = []
-    for player_pieces in [blacks, whites]:
-        liberties = ndimage.binary_dilation(player_pieces, surround_struct)
-        liberties *= (1 - all_pieces).astype(np.bool)
-        liberty_list.append(liberties)
-
-    return liberty_list[0], liberty_list[1]
-
-
-def get_num_liberties(state: np.ndarray):
-    '''
-    :param state:
-    :return: Total black and white liberties
-    '''
-    black_liberties, white_liberties = get_liberties(state)
-    black_liberties = np.count_nonzero(black_liberties)
-    white_liberties = np.count_nonzero(white_liberties)
-
-    return black_liberties, white_liberties
-
-
-def get_board_size(state):
-    assert state.shape[1] == state.shape[2]
-    return (state.shape[1], state.shape[2])
-
-
-def get_turn(state):
-    """
-    Returns who's turn it is (govars.BLACK/govars.WHITE)
-    :param state:
-    :return:
-    """
-    return int(state[govars.TURN_CHNL, 0, 0])
 
 
 def set_turn(state):

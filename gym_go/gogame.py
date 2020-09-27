@@ -42,7 +42,7 @@ class GoGame:
         action2d = action1d // board_shape[0], action1d % board_shape[1]
         passed = action1d == pass_idx
 
-        player = state_utils.get_turn(state)
+        player = GoGame.turn(state)
         previously_passed = GoGame.prev_player_passed(state)
 
         ko_protect = None
@@ -65,7 +65,7 @@ class GoGame:
             state[player, action2d[0], action2d[1]] = 1
 
             # Get adjacent location and check whether the piece will be surrounded by any piece
-            adj_locs, surrounded = state_utils.get_adj_data(state, action2d)
+            adj_locs, surrounded = state_utils.adj_data(state, action2d)
 
             # Update groups
             killed_groups = state_utils.update_groups(state, adj_locs, player)
@@ -78,7 +78,7 @@ class GoGame:
                     ko_protect = killed_group[0]
 
         # Update illegal moves
-        state[govars.INVD_CHNL] = state_utils.get_invalid_moves(state, player, ko_protect)
+        state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect)
 
         # Switch turn
         state_utils.set_turn(state)
@@ -108,7 +108,7 @@ class GoGame:
     def action_size(state=None, board_size: int = None):
         # return number of actions
         if state is not None:
-            m, n = state_utils.get_board_size(state)
+            m, n = state.shape[1:]
         elif board_size is not None:
             m, n = board_size, board_size
         else:
@@ -117,7 +117,7 @@ class GoGame:
 
     @staticmethod
     def prev_player_passed(state):
-        m, n = state_utils.get_board_size(state)
+        m, n = state.shape[1:]
         return np.count_nonzero(state[govars.PASS_CHNL] == 1) == m * n
 
     @staticmethod
@@ -126,7 +126,7 @@ class GoGame:
         :param state:
         :return: 0/1 = game not ended / game ended respectively
         """
-        m, n = state_utils.get_board_size(state)
+        m, n = state.shape[1:]
         return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
     @staticmethod
@@ -149,7 +149,7 @@ class GoGame:
         :param state:
         :return: Who's turn it is (govars.BLACK/govars.WHITE)
         """
-        return state_utils.get_turn(state)
+        return int(state[govars.TURN_CHNL, 0, 0])
 
     @staticmethod
     def valid_moves(state):
@@ -159,12 +159,33 @@ class GoGame:
         return np.append(1 - state[govars.INVD_CHNL].flatten(), 1)
 
     @staticmethod
+    def invalid_moves(state):
+        # return a fixed size binary vector
+        if GoGame.game_ended(state):
+            return np.zeros(GoGame.action_size(state))
+        return np.append(state[govars.INVD_CHNL].flatten(), 0)
+
+    @staticmethod
     def liberties(state: np.ndarray):
-        return state_utils.get_liberties(state)
+        blacks = state[govars.BLACK]
+        whites = state[govars.WHITE]
+        all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
+
+        liberty_list = []
+        for player_pieces in [blacks, whites]:
+            liberties = ndimage.binary_dilation(player_pieces, state_utils.surround_struct)
+            liberties *= (1 - all_pieces).astype(np.bool)
+            liberty_list.append(liberties)
+
+        return liberty_list[0], liberty_list[1]
 
     @staticmethod
     def num_liberties(state: np.ndarray):
-        return state_utils.get_num_liberties(state)
+        black_liberties, white_liberties = GoGame.liberties(state)
+        black_liberties = np.count_nonzero(black_liberties)
+        white_liberties = np.count_nonzero(white_liberties)
+
+        return black_liberties, white_liberties
 
     @staticmethod
     def areas(state):

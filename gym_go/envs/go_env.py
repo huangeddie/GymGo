@@ -62,7 +62,7 @@ class GoEnv(gym.Env):
 
         self.state = GoGame.next_state(self.state, action)
         self.done = GoGame.game_ended(self.state)
-        return np.copy(self.state), self.get_reward(), self.done, self.get_info()
+        return np.copy(self.state), self.reward(), self.done, self.info()
 
     def game_ended(self):
         return self.done
@@ -73,7 +73,7 @@ class GoEnv(gym.Env):
     def prev_player_passed(self):
         return GoGame.prev_player_passed(self.state)
 
-    def get_valid_moves(self):
+    def valid_moves(self):
         return GoGame.valid_moves(self.state)
 
     def action_2d_to_1d(self, action_2d):
@@ -84,11 +84,11 @@ class GoEnv(gym.Env):
         return action_1d
 
     def uniform_random_action(self):
-        valid_moves = self.get_valid_moves()
+        valid_moves = self.valid_moves()
         valid_move_idcs = np.argwhere(valid_moves).flatten()
         return np.random.choice(valid_move_idcs)
 
-    def get_info(self):
+    def info(self):
         """
         :return: Debugging info for the state
         """
@@ -98,42 +98,42 @@ class GoEnv(gym.Env):
             'game_ended': GoGame.game_ended(self.state)
         }
 
-    def get_state(self):
+    def state(self):
         """
         :return: copy of state
         """
         return np.copy(self.state)
 
-    def get_canonical_state(self):
+    def canonical_state(self):
         """
         :return: canonical shallow copy of state
         """
         return GoGame.canonical_form(self.state)
 
-    def get_children(self, canonical=False, padded=True):
+    def children(self, canonical=False, padded=True):
         """
         :return: Same as get_children, but in canonical form
         """
         return GoGame.children(self.state, canonical, padded)
 
-    def get_winning(self):
+    def winning(self):
         """
         :return: Who's currently winning in BLACK's perspective, regardless if the game is over
         """
         return GoGame.winning(self.state, self.komi)
 
-    def get_winner(self):
+    def winner(self):
         """
         Get's the winner in BLACK's perspective
         :return:
         """
 
         if self.game_ended():
-            return self.get_winning()
+            return self.winning()
         else:
             return 0
 
-    def get_reward(self):
+    def reward(self):
         '''
         Return reward based on reward_method.
         heuristic: black total area - white total area
@@ -144,7 +144,7 @@ class GoEnv(gym.Env):
         Area rule definition: https://en.wikipedia.org/wiki/Rules_of_Go#End
         '''
         if self.reward_method == RewardMethod.REAL:
-            return self.get_winner()
+            return self.winner()
 
         elif self.reward_method == RewardMethod.HEURISTIC:
             black_area, white_area = GoGame.areas(self.state)
