@@ -212,13 +212,7 @@ def winning(state, komi=0):
     area_difference = black_area - white_area
     komi_correction = area_difference - komi
 
-    if komi_correction > 0:
-        return 1
-    elif komi_correction == 0:
-        return 0
-    else:
-        assert komi_correction < 0
-        return -1
+    return np.sign(komi_correction)
 
 
 def turn(state):
