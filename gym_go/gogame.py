@@ -401,11 +401,9 @@ def str(state):
         board_str += '\n'
 
     black_area, white_area = areas(state)
-    game_ended = game_ended(state)
-    prev_player_passed = prev_player_passed(state)
-    turn = turn(state)
-    board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('B' if turn == 0 else 'W',
-                                                                            prev_player_passed,
-                                                                            game_ended)
+    done = game_ended(state)
+    ppp = prev_player_passed(state)
+    t = turn(state)
+    board_str += '\tTurn: {}, Last Turn Passed: {}, Game Over: {}\n'.format('B' if t == 0 else 'W', ppp, done)
     board_str += '\tBlack Area: {}, White Area: {}\n'.format(black_area, white_area)
     return board_str
