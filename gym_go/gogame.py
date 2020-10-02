@@ -329,8 +329,8 @@ def batch_canonical_form(batch_state):
 
     for i in white_players_idcs:
         batch_state[i] = batch_state[i, channels]
+        state_utils.batch_set_turn(batch_state[i])
 
-    state_utils.batch_set_turn(batch_state)
     return batch_state
 
 
