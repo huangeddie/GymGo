@@ -216,7 +216,7 @@ def batch_game_ended(batch_state):
     :param batch_state:
     :return: 0/1 = game not ended / game ended respectively
     """
-    return np.max(batch_state[:, govars.DONE_CHNL], axis=[1, 2])
+    return np.max(batch_state[:, govars.DONE_CHNL], axis=(1, 2))
 
 
 def winning(state, komi=0):
