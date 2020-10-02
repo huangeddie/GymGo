@@ -19,10 +19,15 @@ The state of the game is a numpy array
 """
 
 
-def init_board(size):
+def init_state(size):
     # return initial board (numpy board)
     state = np.zeros((govars.NUM_CHNLS, size, size))
     return state
+
+def batch_init_state(batch_size, board_size):
+    # return initial board (numpy board)
+    batch_state = np.zeros((batch_size, govars.NUM_CHNLS, board_size, board_size))
+    return batch_state
 
 
 def next_state(state, action1d, canonical=False):
@@ -194,8 +199,8 @@ def prev_player_passed(state):
     return np.max(state[govars.PASS_CHNL] == 1) == 1
 
 
-def batch_prev_player_passed(batch_states):
-    return np.max(batch_states[:, govars.PASS_CHNL], axis=(1, 2)) == 1
+def batch_prev_player_passed(batch_state):
+    return np.max(batch_state[:, govars.PASS_CHNL], axis=(1, 2)) == 1
 
 
 def game_ended(state):
@@ -206,6 +211,13 @@ def game_ended(state):
     m, n = state.shape[1:]
     return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
+def batch_game_ended(batch_state):
+    """
+    :param batch_state:
+    :return: 0/1 = game not ended / game ended respectively
+    """
+    return np.max(batch_state[:, govars.DONE_CHNL], axis=[1, 2])
+
 
 def winning(state, komi=0):
     black_area, white_area = areas(state)
@@ -213,6 +225,13 @@ def winning(state, komi=0):
     komi_correction = area_difference - komi
 
     return np.sign(komi_correction)
+
+def batch_winning(state, komi=0):
+    batch_black_area, batch_white_area = batch_areas(state)
+    batch_area_difference = batch_black_area - batch_white_area
+    batch_komi_correction = batch_area_difference - komi
+
+    return np.sign(batch_komi_correction)
 
 
 def turn(state):
@@ -275,6 +294,15 @@ def areas(state):
             white_area += np.sum(empty_area)
 
     return black_area, white_area
+
+def batch_areas(batch_state):
+    black_areas, white_areas = [], []
+
+    for state in batch_state:
+        ba, wa = areas(state)
+        black_areas.append(ba)
+        white_areas.append(wa)
+    return np.array(black_areas), np.array(white_areas)
 
 
 def canonical_form(state):
