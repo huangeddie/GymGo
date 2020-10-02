@@ -308,8 +308,7 @@ def batch_areas(batch_state):
 def canonical_form(state):
     state = np.copy(state)
     if turn(state) == govars.WHITE:
-        num_channels = state.shape[0]
-        channels = np.arange(num_channels)
+        channels = np.arange(govars.NUM_CHNLS)
         channels[govars.BLACK] = govars.WHITE
         channels[govars.WHITE] = govars.BLACK
         state = state[channels]
@@ -322,14 +321,13 @@ def batch_canonical_form(batch_state):
     batch_player = batch_turn(batch_state)
     white_players_idcs = np.nonzero(batch_player == govars.WHITE)[0]
 
-    num_channels = batch_state.shape[1]
-    channels = np.arange(num_channels)
+    channels = np.arange(govars.NUM_CHNLS)
     channels[govars.BLACK] = govars.WHITE
     channels[govars.WHITE] = govars.BLACK
 
     for i in white_players_idcs:
         batch_state[i] = batch_state[i, channels]
-        batch_state[i, govars.TURN_CHNL] = 1 - batch_state[i, govars.TURN_CHNL]
+        batch_state[i, govars.TURN_CHNL] = 1 - batch_player[i]
 
     return batch_state
 
