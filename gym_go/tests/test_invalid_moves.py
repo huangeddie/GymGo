@@ -124,6 +124,42 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         self.assertEqual(np.count_nonzero(state[govars.INVD_CHNL] == 1), 5)
         self.assertEqual(state[govars.INVD_CHNL, 0, 0], 0)
 
+    def test_single_kill_no_ko_protection(self):
+        """
+        Thanks to DeepGeGe for finding this bug.
+
+        _,   _,   _,   _,   2,   1,  13,
+
+        _,   _,   _,   _,   4,   3,  12/14,
+
+        _,   _,   _,   _,   6,   5,   7,
+
+        _,   _,   _,   _,   _,   8,  10,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        _,   _,   _,   _,   _,   _,   _,
+
+        :return:
+        """
+
+        for move in [(0, 5), (0, 4), (1, 5), (1, 4), (2, 5), (2, 4), (2, 6), (3, 5), None, (3, 6), None, (1, 6),
+                     (0, 6)]:
+            state, reward, done, info = self.env.step(move)
+
+        # Test final kill move (1, 6) is valid
+        final_move = (1, 6)
+        self.assertEqual(state[govars.INVD_CHNL, 1, 6], 0)
+        state, _, _, _ = self.env.step(final_move)
+
+        # Assert black is removed
+        self.assertEqual(state[govars.BLACK].sum(), 0)
+
+        # Assert 6 white pieces still on the board
+        self.assertEqual(state[govars.WHITE].sum(), 6)    
+        
     def test_invalid_no_liberty_move(self):
         """
         _,   1,   2,   _,   _,   _,   _,
