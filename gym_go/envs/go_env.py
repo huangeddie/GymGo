@@ -6,7 +6,6 @@ import numpy as np
 from gym_go import govars, rendering, gogame
 
 
-
 class RewardMethod(Enum):
     """
     REAL: 0 = game is ongoing, 1 = black won, -1 = game tied or white won

@@ -24,6 +24,7 @@ def init_state(size):
     state = np.zeros((govars.NUM_CHNLS, size, size))
     return state
 
+
 def batch_init_state(batch_size, board_size):
     # return initial board (numpy board)
     batch_state = np.zeros((batch_size, govars.NUM_CHNLS, board_size, board_size))
@@ -212,6 +213,7 @@ def game_ended(state):
     m, n = state.shape[1:]
     return int(np.count_nonzero(state[govars.DONE_CHNL] == 1) == m * n)
 
+
 def batch_game_ended(batch_state):
     """
     :param batch_state:
@@ -226,6 +228,7 @@ def winning(state, komi=0):
     komi_correction = area_difference - komi
 
     return np.sign(komi_correction)
+
 
 def batch_winning(state, komi=0):
     batch_black_area, batch_white_area = batch_areas(state)
@@ -295,6 +298,7 @@ def areas(state):
             white_area += np.sum(empty_area)
 
     return black_area, white_area
+
 
 def batch_areas(batch_state):
     black_areas, white_areas = [], []
