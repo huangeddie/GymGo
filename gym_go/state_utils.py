@@ -211,22 +211,22 @@ def batch_update_pieces(batch_non_pass, batch_state, batch_adj_locs, batch_playe
     return batch_killed_groups
 
 
-def adj_data(state, action2d):
+def adj_data(state, action2d, player):
     neighbors = neighbor_deltas + action2d
     valid = (neighbors >= 0) & (neighbors < state.shape[1])
     valid = np.prod(valid, axis=1)
     neighbors = neighbors[np.nonzero(valid)]
 
-    all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
-    surrounded = (all_pieces[neighbors[:, 0], neighbors[:, 1]] > 0).all()
+    opp_pieces = state[1 - player]
+    surrounded = (opp_pieces[neighbors[:, 0], neighbors[:, 1]] > 0).all()
 
     return neighbors, surrounded
 
 
-def batch_adj_data(batch_state, batch_action2d):
+def batch_adj_data(batch_state, batch_action2d, batch_player):
     batch_neighbors, batch_surrounded = [], []
-    for state, action2d in zip(batch_state, batch_action2d):
-        neighbors, surrounded = adj_data(state, action2d)
+    for state, action2d, player in zip(batch_state, batch_action2d, batch_player):
+        neighbors, surrounded = adj_data(state, action2d, player)
         batch_neighbors.append(neighbors)
         batch_surrounded.append(surrounded)
     return batch_neighbors, batch_surrounded

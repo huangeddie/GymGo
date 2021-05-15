@@ -60,8 +60,8 @@ def next_state(state, action1d, canonical=False):
         # Add piece
         state[player, action2d[0], action2d[1]] = 1
 
-        # Get adjacent location and check whether the piece will be surrounded by any piece
-        adj_locs, surrounded = state_utils.adj_data(state, action2d)
+        # Get adjacent location and check whether the piece will be surrounded by opponent's piece
+        adj_locs, surrounded = state_utils.adj_data(state, action2d, player)
 
         # Update pieces
         killed_groups = state_utils.update_pieces(state, adj_locs, player)
@@ -118,8 +118,9 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
     # Add piece
     batch_states[batch_non_pass, batch_non_pass_players, batch_action2d[:, 0], batch_action2d[:, 1]] = 1
 
-    # Get adjacent location and check whether the piece will be surrounded by any piece
-    batch_adj_locs, batch_surrounded = state_utils.batch_adj_data(batch_states[batch_non_pass], batch_action2d)
+    # Get adjacent location and check whether the piece will be surrounded by opponent's piece
+    batch_adj_locs, batch_surrounded = state_utils.batch_adj_data(batch_states[batch_non_pass], batch_action2d,
+                                                                  batch_non_pass_players)
 
     # Update pieces
     batch_killed_groups = state_utils.batch_update_pieces(batch_non_pass, batch_states, batch_adj_locs,
