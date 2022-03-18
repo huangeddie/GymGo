@@ -405,30 +405,52 @@ def random_action(state):
 
 
 def str(state):
-    board_str = ' '
+    board_str = ''
 
     size = state.shape[1]
+    board_str += '\t'
     for i in range(size):
-        board_str += '   {}'.format(i)
-    board_str += '\n  '
-    board_str += '----' * size + '-'
+        board_str += '{}'.format(i).ljust(2, ' ')
     board_str += '\n'
     for i in range(size):
-        board_str += '{} |'.format(i)
+        board_str += '{}\t'.format(i)
         for j in range(size):
             if state[0, i, j] == 1:
-                board_str += ' B'
+                board_str += '○'
+                if j != size - 1:
+                    if i == 0 or i == size - 1:
+                        board_str += '═'
+                    else:
+                        board_str += '─'
             elif state[1, i, j] == 1:
-                board_str += ' W'
-            elif state[2, i, j] == 1:
-                board_str += ' .'
+                board_str += '●'
+                if j != size - 1:
+                    if i == 0 or i == size - 1:
+                        board_str += '═'
+                    else:
+                        board_str += '─'
             else:
-                board_str += '  '
-
-            board_str += ' |'
-
-        board_str += '\n  '
-        board_str += '----' * size + '-'
+                if i == 0:
+                    if j == 0:
+                        board_str += '╔═'
+                    elif j == size - 1:
+                        board_str += '╗'
+                    else:
+                        board_str += '╤═'
+                elif i == size - 1:
+                    if j == 0:
+                        board_str += '╚═'
+                    elif j == size - 1:
+                        board_str += '╝'
+                    else:
+                        board_str += '╧═'
+                else:
+                    if j == 0:
+                        board_str += '╟─'
+                    elif j == size - 1:
+                        board_str += '╢'
+                    else:
+                        board_str += '┼─'
         board_str += '\n'
 
     black_area, white_area = areas(state)
