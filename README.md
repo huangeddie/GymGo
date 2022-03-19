@@ -9,12 +9,6 @@ pip install -e .
 ```
 
 # API
-### Basic example
-```bash
-# In the root directory
-python3 demo.py
-```
-![alt text](screenshots/human_ui.png)
 
 ### Coding example
 ```python
@@ -29,24 +23,16 @@ go_env.render('terminal')
 ```
 
 ```
-    0   1   2   3   4   5   6
-  -----------------------------
-0 |   |   |   |   |   |   |   |
-  -----------------------------
-1 |   |   |   |   |   |   |   |
-  -----------------------------
-2 |   |   |   |   |   | B |   |
-  -----------------------------
-3 |   |   |   |   |   |   |   |
-  -----------------------------
-4 |   |   |   |   |   |   |   |
-  -----------------------------
-5 |   |   |   |   |   |   |   |
-  -----------------------------
-6 |   |   |   |   |   |   |   |
-  -----------------------------
-	Turn: WHITE, Last Turn Passed: False, Game Over: False
-	Black Area: 49, White Area: 0, Reward: 0
+     0 1 2 3 4 5 6 
+0    ╔═╤═╤═╤═╤═╤═╗
+1    ╟─┼─┼─┼─┼─┼─╢
+2    ╟─┼─┼─┼─┼─○─╢
+3    ╟─┼─┼─┼─┼─┼─╢
+4    ╟─┼─┼─┼─┼─┼─╢
+5    ╟─┼─┼─┼─┼─┼─╢
+6    ╚═╧═╧═╧═╧═╧═╝
+     Turn: WHITE, Game State (ONGOING|PASSED|END): ONGOING
+     Black Area: 49, White Area: 0
 ```
 
 ```python
@@ -55,25 +41,25 @@ go_env.render('terminal')
 ```
 
 ```
-    0   1   2   3   4   5   6
-  -----------------------------
-0 |   |   |   |   |   |   |   |
-  -----------------------------
-1 |   |   |   |   |   |   |   |
-  -----------------------------
-2 |   |   |   |   |   | B |   |
-  -----------------------------
-3 |   |   |   |   |   |   |   |
-  -----------------------------
-4 |   |   |   |   |   |   |   |
-  -----------------------------
-5 |   |   | W |   |   |   |   |
-  -----------------------------
-6 |   |   |   |   |   |   |   |
-  -----------------------------
-	Turn: BLACK, Last Turn Passed: False, Game Over: False
-	Black Area: 1, White Area: 1, Reward: 0
+	0 1 2 3 4 5 6 
+0	╔═╤═╤═╤═╤═╤═╗
+1	╟─┼─┼─┼─┼─┼─╢
+2	╟─┼─┼─┼─┼─○─╢
+3	╟─┼─┼─┼─┼─┼─╢
+4	╟─┼─┼─┼─┼─┼─╢
+5	╟─┼─●─┼─┼─┼─╢
+6	╚═╧═╧═╧═╧═╧═╝
+	Turn: BLACK, Game State (ONGOING|PASSED|END): ONGOING
+	Black Area: 1, White Area: 1
 ```
+
+### UI example
+```bash
+# In the root directory.
+# Defaults to a uniform random AI opponent.
+python3 demo.py
+```
+![alt text](screenshots/human_ui.png)
 
 ### High level API
 [GoEnv](gym_go/envs/go_env.py) defines the Gym environment for Go. 
