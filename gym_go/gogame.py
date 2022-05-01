@@ -247,7 +247,7 @@ def turn(state):
 
 
 def batch_turn(batch_state):
-    return np.max(batch_state[:, govars.TURN_CHNL], axis=(1, 2)).astype(np.int)
+    return np.max(batch_state[:, govars.TURN_CHNL], axis=(1, 2)).astype(int)
 
 
 def liberties(state: np.ndarray):
@@ -258,7 +258,7 @@ def liberties(state: np.ndarray):
     liberty_list = []
     for player_pieces in [blacks, whites]:
         liberties = ndimage.binary_dilation(player_pieces, state_utils.surround_struct)
-        liberties *= (1 - all_pieces).astype(np.bool)
+        liberties *= (1 - all_pieces).astype(bool)
         liberty_list.append(liberties)
 
     return liberty_list[0], liberty_list[1]
