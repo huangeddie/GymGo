@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import ndimage
 
-from gym_go import govars
+from gym_go import govars, gogame
 
 group_struct = np.array([[[0, 0, 0],
                           [0, 0, 0],
@@ -41,6 +41,7 @@ def compute_invalid_moves(state, player, ko_protect=None, history=None):
 
     # Setup invalid and valid arrays
     possible_invalid_array = np.zeros(state.shape[1:])
+    super_ko_invalid_array = np.zeros(state.shape[1:])
     definite_valids_array = np.zeros(state.shape[1:])
 
     # Get all groups
@@ -79,6 +80,28 @@ def compute_invalid_moves(state, player, ko_protect=None, history=None):
     # Ko-protection
     if ko_protect is not None:
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
+
+    # Super ko-protection
+    if history is not None and len(history) > 0:
+        # Create a new state with updated invalid moves so we can calculate child moves
+        updated_state = np.copy(state)
+        updated_state[govars.INVD_CHNL] = (invalid_moves > 0)
+
+        children = gogame.children(updated_state)
+        board_size = np.prod(state.shape[1:])
+        children = children[:board_size]
+
+        trunc_history = np.array(history)[:, :2]
+        for action1d, child_state in enumerate(children):
+            # Skip children that don't represent a valid move
+            if (child_state[:2] == 0).all():
+                continue
+            if (trunc_history == child_state[:2]).all(axis=1).all(axis=1).all(axis=1).any():
+                action2d = action1d // state.shape[1:][0], action1d % state.shape[1:][1]
+                super_ko_invalid_array[action2d[0], action2d[1]] = 1
+
+        invalid_moves = invalid_moves + super_ko_invalid_array
+
     return invalid_moves > 0
 
 

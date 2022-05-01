@@ -160,6 +160,39 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         with self.assertRaises(Exception):
             self.env.step(final_move)
 
+
+    def test_invalid_super_ko_move(self):
+        """
+        1/5/7, 3/6,
+
+        4,       2,
+
+        :return:
+        """
+
+        self.env = gym.make('go-v0', size=2, reward_method='real')
+        self.env.reset()
+
+        for move in [(0, 0), (1, 1), (1, 0), (0, 1), (0, 0), (1, 0)]:
+            state, reward, done, info = self.env.step(move)
+
+        # Test invalid channel
+        self.assertEqual(
+            np.count_nonzero(state[govars.INVD_CHNL]),
+            4,
+            state[govars.INVD_CHNL]
+        )
+        self.assertEqual(np.count_nonzero(state[govars.INVD_CHNL] == 1), 4)
+        self.assertEqual(state[govars.INVD_CHNL, 0, 0], 1)
+
+        # Assert pieces channel is empty at ko-protection coordinate
+        self.assertEqual(state[govars.BLACK, 0, 0], 0)
+        self.assertEqual(state[govars.WHITE, 0, 0], 0)
+
+        final_move = (0, 0)
+        with self.assertRaises(Exception):
+            self.env.step(final_move)
+
     def test_invalid_game_already_over_move(self):
         self.env.step(None)
         self.env.step(None)
