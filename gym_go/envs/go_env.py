@@ -31,6 +31,7 @@ class GoEnv(gym.Env):
         self.size = size
         self.komi = komi
         self.state_ = gogame.init_state(size)
+        self.history = []
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
@@ -43,6 +44,7 @@ class GoEnv(gym.Env):
         done, return state
         '''
         self.state_ = gogame.init_state(self.size)
+        self.history = []
         self.done = False
         return np.copy(self.state_)
 
@@ -59,7 +61,9 @@ class GoEnv(gym.Env):
         elif action is None:
             action = self.size ** 2
 
+        self.old_state = self.state()
         self.state_ = gogame.next_state(self.state_, action, canonical=False)
+        self.history.append(self.old_state)
         self.done = gogame.game_ended(self.state_)
         return np.copy(self.state_), self.reward(), self.done, self.info()
 
