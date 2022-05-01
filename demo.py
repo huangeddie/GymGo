@@ -1,6 +1,7 @@
 import argparse
 
 import gym
+import gym_go
 
 # Arguments
 parser = argparse.ArgumentParser(description='Demo Go Environment')
@@ -9,7 +10,8 @@ parser.add_argument('--komi', type=float, default=0)
 args = parser.parse_args()
 
 # Initialize environment
-go_env = gym.make('gym_go:go-v0', size=args.boardsize, komi=args.komi)
+go_env = gym.make('go-v0', size=args.boardsize, komi=args.komi)
+go_env.reset()
 
 # Game loop
 done = False

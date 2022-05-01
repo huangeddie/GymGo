@@ -2,6 +2,7 @@ import time
 import unittest
 
 import gym
+import gym_go
 import numpy as np
 from tqdm import tqdm
 
@@ -11,7 +12,7 @@ class Efficiency(unittest.TestCase):
     iterations = 64
 
     def setUp(self) -> None:
-        self.env = gym.make('gym_go:go-v0', size=self.boardsize, reward_method='real')
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real')
 
     def testOrderedTrajs(self):
         durs = []

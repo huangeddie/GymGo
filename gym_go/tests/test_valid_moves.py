@@ -10,7 +10,7 @@ class TestGoEnvValidMoves(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.env = gym.make('gym_go:go-v0', size=7, reward_method='real')
+        self.env = gym.make('go-v0', size=7, reward_method='real')
 
     def setUp(self):
         self.env.reset()
