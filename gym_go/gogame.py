@@ -280,7 +280,7 @@ def areas(state):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     empties = 1 - all_pieces
 
-    empty_labels, num_empty_areas = ndimage.measurements.label(empties)
+    empty_labels, num_empty_areas = ndimage.label(empties)
 
     black_area, white_area = np.sum(state[govars.BLACK]), np.sum(state[govars.WHITE])
     for label in range(1, num_empty_areas + 1):

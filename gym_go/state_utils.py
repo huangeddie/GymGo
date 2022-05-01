@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import ndimage
-from scipy.ndimage import measurements
 
 from gym_go import govars
 
@@ -45,8 +44,8 @@ def compute_invalid_moves(state, player, ko_protect=None):
     definite_valids_array = np.zeros(state.shape[1:])
 
     # Get all groups
-    all_own_groups, num_own_groups = measurements.label(state[player])
-    all_opp_groups, num_opp_groups = measurements.label(state[1 - player])
+    all_own_groups, num_own_groups = ndimage.label(state[player])
+    all_opp_groups, num_opp_groups = ndimage.label(state[1 - player])
     expanded_own_groups = np.zeros((num_own_groups, *state.shape[1:]))
     expanded_opp_groups = np.zeros((num_opp_groups, *state.shape[1:]))
 
@@ -108,8 +107,8 @@ def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect):
     batch_definite_valids_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
 
     # Get all groups
-    batch_all_own_groups, _ = measurements.label(batch_state[batch_idcs, batch_player], group_struct)
-    batch_all_opp_groups, _ = measurements.label(batch_state[batch_idcs, 1 - batch_player], group_struct)
+    batch_all_own_groups, _ = ndimage.label(batch_state[batch_idcs, batch_player], group_struct)
+    batch_all_opp_groups, _ = ndimage.label(batch_state[batch_idcs, 1 - batch_player], group_struct)
 
     batch_data = enumerate(zip(batch_all_own_groups, batch_all_opp_groups, batch_empties))
     for i, (all_own_groups, all_opp_groups, empties) in batch_data:
@@ -163,7 +162,7 @@ def update_pieces(state, adj_locs, player):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     empties = 1 - all_pieces
 
-    all_opp_groups, _ = ndimage.measurements.label(state[opponent])
+    all_opp_groups, _ = ndimage.label(state[opponent])
 
     # Go through opponent groups
     all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
@@ -187,7 +186,7 @@ def batch_update_pieces(batch_non_pass, batch_state, batch_adj_locs, batch_playe
     batch_all_pieces = np.sum(batch_state[:, [govars.BLACK, govars.WHITE]], axis=1)
     batch_empties = 1 - batch_all_pieces
 
-    batch_all_opp_groups, _ = ndimage.measurements.label(batch_state[batch_non_pass, batch_opponent],
+    batch_all_opp_groups, _ = ndimage.label(batch_state[batch_non_pass, batch_opponent],
                                                          group_struct)
 
     batch_data = enumerate(zip(batch_all_opp_groups, batch_all_pieces, batch_empties, batch_adj_locs, batch_opponent))
