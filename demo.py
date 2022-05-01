@@ -10,6 +10,7 @@ args = parser.parse_args()
 
 # Initialize environment
 go_env = gym.make('gym_go:go-v0', size=args.boardsize, komi=args.komi)
+go_env.reset()
 
 # Game loop
 done = False

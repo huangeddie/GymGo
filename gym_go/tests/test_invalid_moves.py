@@ -186,6 +186,7 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         """
 
         self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        self.env.reset()
         for move in [6, 7, 8, 5, 4, 8, 0, 1]:
             state, reward, done, info = self.env.step(move)
 
@@ -203,6 +204,7 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         """
 
         self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        self.env.reset()
         for move in [0, 8, 6, 4, 1, 2, 3, 7]:
             state, reward, done, info = self.env.step(move)
 
