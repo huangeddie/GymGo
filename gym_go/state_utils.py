@@ -20,7 +20,7 @@ surround_struct = np.array([[0, 1, 0],
 neighbor_deltas = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
 
 
-def compute_invalid_moves(state, player, ko_protect=None):
+def compute_invalid_moves(state, player, ko_protect=None, history=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -82,7 +82,7 @@ def compute_invalid_moves(state, player, ko_protect=None):
     return invalid_moves > 0
 
 
-def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect):
+def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect, batch_history=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location

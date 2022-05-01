@@ -31,7 +31,7 @@ def batch_init_state(batch_size, board_size):
     return batch_state
 
 
-def next_state(state, action1d, canonical=False):
+def next_state(state, action1d, canonical=False, history=None):
     # Deep copy the state to modify
     state = np.copy(state)
 
@@ -75,7 +75,7 @@ def next_state(state, action1d, canonical=False):
                 ko_protect = killed_group[0]
 
     # Update invalid moves
-    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect)
+    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect, history)
 
     # Switch turn
     state_utils.set_turn(state)
@@ -87,7 +87,7 @@ def next_state(state, action1d, canonical=False):
     return state
 
 
-def batch_next_states(batch_states, batch_action1d, canonical=False):
+def batch_next_states(batch_states, batch_action1d, canonical=False, batch_histories=None):
     # Deep copy the state to modify
     batch_states = np.copy(batch_states)
 
@@ -138,7 +138,7 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
 
     # Update invalid moves
     batch_states[:, govars.INVD_CHNL] = state_utils.batch_compute_invalid_moves(batch_states, batch_players,
-                                                                                batch_ko_protect)
+                                                                                batch_ko_protect, batch_histories)
 
     # Switch turn
     state_utils.batch_set_turn(batch_states)

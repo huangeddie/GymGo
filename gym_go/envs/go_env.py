@@ -62,7 +62,7 @@ class GoEnv(gym.Env):
             action = self.size ** 2
 
         self.old_state = self.state()
-        self.state_ = gogame.next_state(self.state_, action, canonical=False)
+        self.state_ = gogame.next_state(self.state_, action, canonical=False, history=self.history)
         self.history.append(self.old_state)
         self.done = gogame.game_ended(self.state_)
         return np.copy(self.state_), self.reward(), self.done, self.info()
