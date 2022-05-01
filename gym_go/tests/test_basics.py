@@ -174,6 +174,7 @@ class TestGoEnvBasics(unittest.TestCase):
 
     def test_komi(self):
         env = gym.make('gym_go:go-v0', size=7, komi=2.5, reward_method='real')
+        env.reset()
 
         # White win
         _ = env.step(None)
@@ -224,6 +225,7 @@ class TestGoEnvBasics(unittest.TestCase):
 
     def test_real_reward(self):
         env = gym.make('gym_go:go-v0', size=7, reward_method='real')
+        env.reset()
 
         # In game
         state, reward, done, info = env.step((0, 0))
@@ -259,6 +261,7 @@ class TestGoEnvBasics(unittest.TestCase):
 
     def test_heuristic_reward(self):
         env = gym.make('gym_go:go-v0', size=7, reward_method='heuristic')
+        env.reset()
 
         # In game
         state, reward, done, info = env.step((0, 0))
