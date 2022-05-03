@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 import gym
 import gym_go
 from gym_go import gogame
@@ -34,6 +36,20 @@ class TestGoEnvSuperKo(unittest.TestCase):
         invalid_moves = state_utils.compute_invalid_moves(state, 0, ko_protect=None, history=history)
 
         self.assertTrue((invalid_moves == [[1, 0], [0, 0]]).all())
+
+    def test_batch_invalid_moves(self):
+        """Given an empty board and a history with a move, that same move should be invalid"""
+        state = gogame.init_state(2)
+        history = [gogame.next_state(state, 0)]
+
+        invalid_moves = state_utils.batch_compute_invalid_moves(
+            np.expand_dims(state, 0),
+            np.array([0]),
+            batch_ko_protect=np.array([None]),
+            batch_history=np.expand_dims(history, 0)
+        )
+
+        self.assertTrue((invalid_moves == [[[1, 0], [0, 0]]]).all())
 
 if __name__ == '__main__':
     unittest.main()

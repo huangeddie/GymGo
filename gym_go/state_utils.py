@@ -127,6 +127,7 @@ def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect, bat
 
     # Setup invalid and valid arrays
     batch_possible_invalid_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
+    batch_super_ko_invalid_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
     batch_definite_valids_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
 
     # Get all groups
@@ -175,6 +176,30 @@ def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect, bat
     for i, ko_protect in enumerate(batch_ko_protect):
         if ko_protect is not None:
             invalid_moves[i, ko_protect[0], ko_protect[1]] = 1
+
+    # Super ko-protection
+    if batch_history is not None:
+        # Create a new state with updated invalid moves so we can calculate child moves
+        updated_states = np.copy(batch_state)
+        updated_states[:, govars.INVD_CHNL] = (invalid_moves > 0)
+
+        board_size = np.prod(batch_state.shape[2:])
+        batch_children = np.array(
+            [gogame.children(s)[:board_size] for s in updated_states]
+        )
+
+        trunc_history = batch_history[:, :, :2]
+        for i, state in enumerate(batch_state):
+            for action1d, child_state in enumerate(batch_children[i]):
+                # Skip children that don't represent a valid move
+                if (child_state[:2] == 0).all():
+                    continue
+                if (trunc_history[i] == child_state[:2]).all(axis=1).all(axis=1).all(axis=1).any():
+                    action2d = action1d // state.shape[1:][0], action1d % state.shape[1:][1]
+                    batch_super_ko_invalid_array[i, action2d[0], action2d[1]] = 1
+
+        invalid_moves = invalid_moves + batch_super_ko_invalid_array
+
     return invalid_moves > 0
 
 
