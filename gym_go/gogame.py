@@ -74,11 +74,11 @@ def next_state(state, action1d, canonical=False, history=None):
             if len(killed_group) == 1:
                 ko_protect = killed_group[0]
 
-    # Update invalid moves
-    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect, history)
-
     # Switch turn
     state_utils.set_turn(state)
+
+    # Update invalid moves
+    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect, history)
 
     if canonical:
         # Set canonical form
@@ -136,12 +136,12 @@ def batch_next_states(batch_states, batch_action1d, canonical=False, batch_histo
             if len(killed_group) == 1:
                 batch_ko_protect[batch_non_pass[i]] = killed_group[0]
 
+    # Switch turn
+    state_utils.batch_set_turn(batch_states)
+
     # Update invalid moves
     batch_states[:, govars.INVD_CHNL] = state_utils.batch_compute_invalid_moves(batch_states, batch_players,
                                                                                 batch_ko_protect, batch_histories)
-
-    # Switch turn
-    state_utils.batch_set_turn(batch_states)
 
     if canonical:
         # Set canonical form
