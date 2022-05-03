@@ -4,7 +4,7 @@ import unittest
 import gym
 import numpy as np
 
-from gym_go import govars
+from gym_go import govars, gogame
 
 
 class TestGoEnvInvalidMoves(unittest.TestCase):
@@ -174,6 +174,8 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
 
         with self.assertRaises(Exception):
             self.env.step((0, 0))
+
+        self.assertTrue((gogame.invalid_moves(self.env.state()) == 1).all())
 
     def test_small_suicide(self):
         """
