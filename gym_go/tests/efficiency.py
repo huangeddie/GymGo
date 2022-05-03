@@ -11,10 +11,32 @@ class Efficiency(unittest.TestCase):
     boardsize = 9
     iterations = 64
 
-    def setUp(self) -> None:
-        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real')
-
     def testOrderedTrajs(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real')
+        self.doOrderedTrajs()
+
+    def testOrderedTrajsSuperKo(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real', super_ko=True)
+        self.doOrderedTrajs('super ko')
+
+    def testLowerBound(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real')
+        self.doLowerBound()
+
+    def testLowerBoundSuperKo(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real', super_ko=True)
+        self.doLowerBound('super ko')
+
+    def testRandTrajsWithChildren(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real')
+        self.doRandTrajsWithChildren()
+
+    def testRandTrajsWithChildrenSuperKo(self):
+        self.env = gym.make('go-v0', size=self.boardsize, reward_method='real', super_ko=True)
+        self.doRandTrajsWithChildren('super ko')
+
+
+    def doOrderedTrajs(self, msg=''):
         durs = []
         for _ in tqdm(range(self.iterations)):
             start = time.time()
@@ -28,9 +50,12 @@ class Efficiency(unittest.TestCase):
 
         avg_time = np.mean(durs)
         std_time = np.std(durs)
-        print(f"Ordered Trajs: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
+        if msg != '':
+            msg = f' ({msg})'
+        print(f"Ordered Trajs{msg}: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
 
-    def testLowerBound(self):
+
+    def doLowerBound(self, msg=''):
         durs = []
         for _ in tqdm(range(self.iterations)):
             start = time.time()
@@ -52,9 +77,11 @@ class Efficiency(unittest.TestCase):
 
         avg_time = np.mean(durs)
         std_time = np.std(durs)
-        print(f"Lower bound: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
+        if msg != '':
+            msg = f' ({msg})'
+        print(f"Lower bound{msg}: {avg_time:.3f} AVG, {std_time:.3f} STD", flush=True)
 
-    def testRandTrajsWithChildren(self):
+    def doRandTrajsWithChildren(self, msg=''):
         durs = []
         num_steps = []
         for _ in tqdm(range(self.iterations)):
@@ -84,7 +111,9 @@ class Efficiency(unittest.TestCase):
         avg_time = np.mean(durs)
         std_time = np.std(durs)
         avg_steps = np.mean(num_steps)
-        print(f"Rand Trajs w/ Children: {avg_time:.3f} AVG SEC, {std_time:.3f} STD SEC, {avg_steps:.1f} AVG STEPS",
+        if msg != '':
+            msg = f' ({msg})'
+        print(f"Rand Trajs w/ Children{msg}: {avg_time:.3f} AVG SEC, {std_time:.3f} STD SEC, {avg_steps:.1f} AVG STEPS",
               flush=True)
 
 
