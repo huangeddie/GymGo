@@ -81,6 +81,17 @@ area (a game is tied if both players have an equal amount of area on the board).
 There is also support for `komi`, a bias score constant to balance the advantage of black going first.
 By default `komi` is set to 0.
 
+# Ko and super ko
+The game supports a simple implementation of the ko rule by default, which prevents single move take-back scenarios. In addition, an optional
+super ko rule can be enabled when initializing the gym:
+
+```python
+go_env = gym.make('go-v0', size=7, super_ko=True)
+```
+
+This rule implements positional super ko by tracking play history, which catches repeating positions not detected by the regular ko rule
+at the price of a performance overhead.
+
 # Game ending
 A game ends when both players pass consecutively
 
