@@ -153,7 +153,7 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
 def invalid_moves(state):
     # return a fixed size binary vector
     if game_ended(state):
-        return np.zeros(action_size(state))
+        return np.ones(action_size(state))
     return np.append(state[govars.INVD_CHNL].flatten(), 0)
 
 
