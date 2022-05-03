@@ -4,14 +4,14 @@ import unittest
 import gym
 import numpy as np
 
-from gym_go import govars
+from gym_go import govars, gogame
 
 
 class TestGoEnvInvalidMoves(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.env = gym.make('gym_go:go-v0', size=7, reward_method='real')
+        self.env = gym.make('go-v0', size=7, reward_method='real')
 
     def setUp(self):
         self.env.reset()
@@ -160,6 +160,57 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         with self.assertRaises(Exception):
             self.env.step(final_move)
 
+
+    def test_invalid_super_ko_move(self):
+        """
+        1/5/7, 3/6,
+
+        4,       2,
+
+        :return:
+        """
+
+        self.env = gym.make('go-v0', size=2, super_ko=True, reward_method='real')
+        self.env.reset()
+
+        for move in [(0, 0), (1, 1), (1, 0), (0, 1), (0, 0), (1, 0)]:
+            state, reward, done, info = self.env.step(move)
+
+        # Test invalid channel
+        self.assertEqual(
+            np.count_nonzero(state[govars.INVD_CHNL]),
+            4,
+            state[govars.INVD_CHNL]
+        )
+        self.assertEqual(np.count_nonzero(state[govars.INVD_CHNL] == 1), 4)
+        self.assertEqual(state[govars.INVD_CHNL, 0, 0], 1)
+
+        # Assert pieces channel is empty at ko-protection coordinate
+        self.assertEqual(state[govars.BLACK, 0, 0], 0)
+        self.assertEqual(state[govars.WHITE, 0, 0], 0)
+
+        final_move = (0, 0)
+        with self.assertRaises(Exception):
+            self.env.step(final_move)
+
+    def test_valid_when_super_ko_disabled(self):
+        self.env = gym.make('go-v0', size=2, super_ko=False, reward_method='real')
+        self.env.reset()
+
+        for move in [(0, 0), (1, 1), (1, 0), (0, 1), (0, 0), (1, 0)]:
+            state, reward, done, info = self.env.step(move)
+
+        # Test invalid channel
+        self.assertEqual(
+            np.count_nonzero(state[govars.INVD_CHNL]),
+            3,
+            state[govars.INVD_CHNL]
+        )
+        self.assertEqual(np.count_nonzero(state[govars.INVD_CHNL] == 1), 3)
+        self.assertEqual(state[govars.INVD_CHNL, 0, 0], 0)
+
+        self.env.step((0, 0))
+
     def test_invalid_game_already_over_move(self):
         self.env.step(None)
         self.env.step(None)
@@ -175,6 +226,8 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         with self.assertRaises(Exception):
             self.env.step((0, 0))
 
+        self.assertTrue((gogame.invalid_moves(self.env.state()) == 1).all())
+
     def test_small_suicide(self):
         """
         7,   8,   0,
@@ -185,7 +238,8 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         :return:
         """
 
-        self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        self.env = gym.make('go-v0', size=3, reward_method='real')
+        self.env.reset()
         for move in [6, 7, 8, 5, 4, 8, 0, 1]:
             state, reward, done, info = self.env.step(move)
 
@@ -202,7 +256,8 @@ class TestGoEnvInvalidMoves(unittest.TestCase):
         :return:
         """
 
-        self.env = gym.make('gym_go:go-v0', size=3, reward_method='real')
+        self.env = gym.make('go-v0', size=3, reward_method='real')
+        self.env.reset()
         for move in [0, 8, 6, 4, 1, 2, 3, 7]:
             state, reward, done, info = self.env.step(move)
 

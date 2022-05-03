@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import ndimage
-from scipy.ndimage import measurements
 
-from gym_go import govars
+from gym_go import govars, gogame
 
 group_struct = np.array([[[0, 0, 0],
                           [0, 0, 0],
@@ -21,7 +20,7 @@ surround_struct = np.array([[0, 1, 0],
 neighbor_deltas = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
 
 
-def compute_invalid_moves(state, player, ko_protect=None):
+def compute_invalid_moves(state, player, ko_protect=None, history=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -42,11 +41,12 @@ def compute_invalid_moves(state, player, ko_protect=None):
 
     # Setup invalid and valid arrays
     possible_invalid_array = np.zeros(state.shape[1:])
+    super_ko_invalid_array = np.zeros(state.shape[1:])
     definite_valids_array = np.zeros(state.shape[1:])
 
     # Get all groups
-    all_own_groups, num_own_groups = measurements.label(state[player])
-    all_opp_groups, num_opp_groups = measurements.label(state[1 - player])
+    all_own_groups, num_own_groups = ndimage.label(state[player])
+    all_opp_groups, num_opp_groups = ndimage.label(state[1 - player])
     expanded_own_groups = np.zeros((num_own_groups, *state.shape[1:]))
     expanded_opp_groups = np.zeros((num_opp_groups, *state.shape[1:]))
 
@@ -80,10 +80,32 @@ def compute_invalid_moves(state, player, ko_protect=None):
     # Ko-protection
     if ko_protect is not None:
         invalid_moves[ko_protect[0], ko_protect[1]] = 1
+
+    # Super ko-protection
+    if history is not None and len(history) > 0:
+        # Create a new state with updated invalid moves so we can calculate child moves
+        updated_state = np.copy(state)
+        updated_state[govars.INVD_CHNL] = (invalid_moves > 0)
+
+        children = gogame.children(updated_state)
+        board_size = np.prod(state.shape[1:])
+        children = children[:board_size]
+
+        trunc_history = np.array(history)[:, :2]
+        for action1d, child_state in enumerate(children):
+            # Skip children that don't represent a valid move
+            if (child_state[:2] == 0).all():
+                continue
+            if (trunc_history == child_state[:2]).all(axis=1).all(axis=1).all(axis=1).any():
+                action2d = action1d // state.shape[1:][0], action1d % state.shape[1:][1]
+                super_ko_invalid_array[action2d[0], action2d[1]] = 1
+
+        invalid_moves = invalid_moves + super_ko_invalid_array
+
     return invalid_moves > 0
 
 
-def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect):
+def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect, batch_history=None):
     """
     Updates invalid moves in the OPPONENT's perspective
     1.) Opponent cannot move at a location
@@ -105,11 +127,12 @@ def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect):
 
     # Setup invalid and valid arrays
     batch_possible_invalid_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
+    batch_super_ko_invalid_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
     batch_definite_valids_array = np.zeros(batch_state.shape[:1] + batch_state.shape[2:])
 
     # Get all groups
-    batch_all_own_groups, _ = measurements.label(batch_state[batch_idcs, batch_player], group_struct)
-    batch_all_opp_groups, _ = measurements.label(batch_state[batch_idcs, 1 - batch_player], group_struct)
+    batch_all_own_groups, _ = ndimage.label(batch_state[batch_idcs, batch_player], group_struct)
+    batch_all_opp_groups, _ = ndimage.label(batch_state[batch_idcs, 1 - batch_player], group_struct)
 
     batch_data = enumerate(zip(batch_all_own_groups, batch_all_opp_groups, batch_empties))
     for i, (all_own_groups, all_opp_groups, empties) in batch_data:
@@ -153,6 +176,30 @@ def batch_compute_invalid_moves(batch_state, batch_player, batch_ko_protect):
     for i, ko_protect in enumerate(batch_ko_protect):
         if ko_protect is not None:
             invalid_moves[i, ko_protect[0], ko_protect[1]] = 1
+
+    # Super ko-protection
+    if batch_history is not None:
+        # Create a new state with updated invalid moves so we can calculate child moves
+        updated_states = np.copy(batch_state)
+        updated_states[:, govars.INVD_CHNL] = (invalid_moves > 0)
+
+        board_size = np.prod(batch_state.shape[2:])
+        batch_children = np.array(
+            [gogame.children(s)[:board_size] for s in updated_states]
+        )
+
+        trunc_history = batch_history[:, :, :2]
+        for i, state in enumerate(batch_state):
+            for action1d, child_state in enumerate(batch_children[i]):
+                # Skip children that don't represent a valid move
+                if (child_state[:2] == 0).all():
+                    continue
+                if (trunc_history[i] == child_state[:2]).all(axis=1).all(axis=1).all(axis=1).any():
+                    action2d = action1d // state.shape[1:][0], action1d % state.shape[1:][1]
+                    batch_super_ko_invalid_array[i, action2d[0], action2d[1]] = 1
+
+        invalid_moves = invalid_moves + batch_super_ko_invalid_array
+
     return invalid_moves > 0
 
 
@@ -163,7 +210,7 @@ def update_pieces(state, adj_locs, player):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     empties = 1 - all_pieces
 
-    all_opp_groups, _ = ndimage.measurements.label(state[opponent])
+    all_opp_groups, _ = ndimage.label(state[opponent])
 
     # Go through opponent groups
     all_adj_labels = all_opp_groups[adj_locs[:, 0], adj_locs[:, 1]]
@@ -187,7 +234,7 @@ def batch_update_pieces(batch_non_pass, batch_state, batch_adj_locs, batch_playe
     batch_all_pieces = np.sum(batch_state[:, [govars.BLACK, govars.WHITE]], axis=1)
     batch_empties = 1 - batch_all_pieces
 
-    batch_all_opp_groups, _ = ndimage.measurements.label(batch_state[batch_non_pass, batch_opponent],
+    batch_all_opp_groups, _ = ndimage.label(batch_state[batch_non_pass, batch_opponent],
                                                          group_struct)
 
     batch_data = enumerate(zip(batch_all_opp_groups, batch_all_pieces, batch_empties, batch_adj_locs, batch_opponent))

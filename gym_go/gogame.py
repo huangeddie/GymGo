@@ -31,7 +31,7 @@ def batch_init_state(batch_size, board_size):
     return batch_state
 
 
-def next_state(state, action1d, canonical=False):
+def next_state(state, action1d, canonical=False, history=None):
     # Deep copy the state to modify
     state = np.copy(state)
 
@@ -74,11 +74,11 @@ def next_state(state, action1d, canonical=False):
             if len(killed_group) == 1:
                 ko_protect = killed_group[0]
 
-    # Update invalid moves
-    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect)
-
     # Switch turn
     state_utils.set_turn(state)
+
+    # Update invalid moves
+    state[govars.INVD_CHNL] = state_utils.compute_invalid_moves(state, player, ko_protect, history)
 
     if canonical:
         # Set canonical form
@@ -87,7 +87,7 @@ def next_state(state, action1d, canonical=False):
     return state
 
 
-def batch_next_states(batch_states, batch_action1d, canonical=False):
+def batch_next_states(batch_states, batch_action1d, canonical=False, batch_histories=None):
     # Deep copy the state to modify
     batch_states = np.copy(batch_states)
 
@@ -136,12 +136,12 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
             if len(killed_group) == 1:
                 batch_ko_protect[batch_non_pass[i]] = killed_group[0]
 
-    # Update invalid moves
-    batch_states[:, govars.INVD_CHNL] = state_utils.batch_compute_invalid_moves(batch_states, batch_players,
-                                                                                batch_ko_protect)
-
     # Switch turn
     state_utils.batch_set_turn(batch_states)
+
+    # Update invalid moves
+    batch_states[:, govars.INVD_CHNL] = state_utils.batch_compute_invalid_moves(batch_states, batch_players,
+                                                                                batch_ko_protect, batch_histories)
 
     if canonical:
         # Set canonical form
@@ -153,7 +153,7 @@ def batch_next_states(batch_states, batch_action1d, canonical=False):
 def invalid_moves(state):
     # return a fixed size binary vector
     if game_ended(state):
-        return np.zeros(action_size(state))
+        return np.ones(action_size(state))
     return np.append(state[govars.INVD_CHNL].flatten(), 0)
 
 
@@ -247,7 +247,7 @@ def turn(state):
 
 
 def batch_turn(batch_state):
-    return np.max(batch_state[:, govars.TURN_CHNL], axis=(1, 2)).astype(np.int)
+    return np.max(batch_state[:, govars.TURN_CHNL], axis=(1, 2)).astype(int)
 
 
 def liberties(state: np.ndarray):
@@ -258,7 +258,7 @@ def liberties(state: np.ndarray):
     liberty_list = []
     for player_pieces in [blacks, whites]:
         liberties = ndimage.binary_dilation(player_pieces, state_utils.surround_struct)
-        liberties *= (1 - all_pieces).astype(np.bool)
+        liberties *= (1 - all_pieces).astype(bool)
         liberty_list.append(liberties)
 
     return liberty_list[0], liberty_list[1]
@@ -280,7 +280,7 @@ def areas(state):
     all_pieces = np.sum(state[[govars.BLACK, govars.WHITE]], axis=0)
     empties = 1 - all_pieces
 
-    empty_labels, num_empty_areas = ndimage.measurements.label(empties)
+    empty_labels, num_empty_areas = ndimage.label(empties)
 
     black_area, white_area = np.sum(state[govars.BLACK]), np.sum(state[govars.WHITE])
     for label in range(1, num_empty_areas + 1):

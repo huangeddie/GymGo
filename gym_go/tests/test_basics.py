@@ -10,13 +10,13 @@ class TestGoEnvBasics(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.env = gym.make('gym_go:go-v0', size=7, reward_method='real')
+        self.env = gym.make('go-v0', size=7, reward_method='real')
 
     def setUp(self):
         self.env.reset()
 
     def test_state(self):
-        env = gym.make('gym_go:go-v0', size=7)
+        env = gym.make('go-v0', size=7)
         state = env.reset()
         self.assertIsInstance(state, np.ndarray)
         self.assertEqual(state.shape[0], govars.NUM_CHNLS)
@@ -27,7 +27,7 @@ class TestGoEnvBasics(unittest.TestCase):
         expected_sizes = [7, 13, 19]
 
         for expec_size in expected_sizes:
-            env = gym.make('gym_go:go-v0', size=expec_size)
+            env = gym.make('go-v0', size=expec_size)
             state = env.reset()
             self.assertEqual(state.shape[1], expec_size)
             self.assertEqual(state.shape[2], expec_size)
@@ -150,7 +150,7 @@ class TestGoEnvBasics(unittest.TestCase):
         self.assertFalse(done)
 
     def test_num_liberties(self):
-        env = gym.make('gym_go:go-v0', size=7)
+        env = gym.make('go-v0', size=7)
 
         steps = [(0, 0), (0, 1)]
         libs = [(2, 0), (1, 2)]
@@ -173,7 +173,8 @@ class TestGoEnvBasics(unittest.TestCase):
             self.assertEqual(whitelibs, libs[1], state)
 
     def test_komi(self):
-        env = gym.make('gym_go:go-v0', size=7, komi=2.5, reward_method='real')
+        env = gym.make('go-v0', size=7, komi=2.5, reward_method='real')
+        env.reset()
 
         # White win
         _ = env.step(None)
@@ -223,7 +224,8 @@ class TestGoEnvBasics(unittest.TestCase):
                     self.assertTrue((children[a] == 0).all())
 
     def test_real_reward(self):
-        env = gym.make('gym_go:go-v0', size=7, reward_method='real')
+        env = gym.make('go-v0', size=7, reward_method='real')
+        env.reset()
 
         # In game
         state, reward, done, info = env.step((0, 0))
@@ -258,7 +260,8 @@ class TestGoEnvBasics(unittest.TestCase):
         env.close()
 
     def test_heuristic_reward(self):
-        env = gym.make('gym_go:go-v0', size=7, reward_method='heuristic')
+        env = gym.make('go-v0', size=7, reward_method='heuristic')
+        env.reset()
 
         # In game
         state, reward, done, info = env.step((0, 0))

@@ -1,5 +1,5 @@
 # About
-An environment for the board game Go. It is implemented using OpenAI's Gym API. 
+An environment for the board game Go. It is implemented using OpenAI's Gym API.
 It is also optimized to be as efficient as possible in order to efficiently train ML models.
 
 # Installation
@@ -13,8 +13,10 @@ pip install -e .
 ### Coding example
 ```python
 import gym
+import gym_go
 
-go_env = gym.make('gym_go:go-v0', size=7, komi=0, reward_method='real')
+go_env = gym.make('go-v0', size=7, komi=0, reward_method='real')
+go_env.reset()
 
 first_action = (2,5)
 second_action = (5,2)
@@ -23,7 +25,7 @@ go_env.render('terminal')
 ```
 
 ```
-     0 1 2 3 4 5 6 
+     0 1 2 3 4 5 6
 0    ╔═╤═╤═╤═╤═╤═╗
 1    ╟─┼─┼─┼─┼─┼─╢
 2    ╟─┼─┼─┼─┼─○─╢
@@ -41,7 +43,7 @@ go_env.render('terminal')
 ```
 
 ```
-	0 1 2 3 4 5 6 
+	0 1 2 3 4 5 6
 0	╔═╤═╤═╤═╤═╤═╗
 1	╟─┼─┼─┼─┼─┼─╢
 2	╟─┼─┼─┼─┼─○─╢
@@ -62,22 +64,33 @@ python3 demo.py
 ![alt text](screenshots/human_ui.png)
 
 ### High level API
-[GoEnv](gym_go/envs/go_env.py) defines the Gym environment for Go. 
-It contains the highest level API for basic Go usage.  
+[GoEnv](gym_go/envs/go_env.py) defines the Gym environment for Go.
+It contains the highest level API for basic Go usage.
 
 ### Low level API
 [GoGame](gym_go/gogame.py) is the set of low-level functions that defines all the game logic of Go.
 `GoEnv`'s high level API is built on `GoGame`.
-These sets of functions are intended for a more detailed and finetuned 
+These sets of functions are intended for a more detailed and finetuned
 usage of Go.
 
 # Scoring
-We use Trump Taylor scoring, a simple area scoring, to determine the winner. A player's _area_ is defined as the number of empty points a 
-player's pieces surround plus the number of player's pieces on the board. The _winner_ is the player with the larger 
+We use Trump Taylor scoring, a simple area scoring, to determine the winner. A player's _area_ is defined as the number of empty points a
+player's pieces surround plus the number of player's pieces on the board. The _winner_ is the player with the larger
 area (a game is tied if both players have an equal amount of area on the board).
 
-There is also support for `komi`, a bias score constant to balance the advantage of black going first. 
+There is also support for `komi`, a bias score constant to balance the advantage of black going first.
 By default `komi` is set to 0.
+
+# Ko and super ko
+The game supports a simple implementation of the ko rule by default, which prevents single move take-back scenarios. In addition, an optional
+super ko rule can be enabled when initializing the gym:
+
+```python
+go_env = gym.make('go-v0', size=7, super_ko=True)
+```
+
+This rule implements positional super ko by tracking play history, which catches repeating positions not detected by the regular ko rule
+at the price of a performance overhead.
 
 # Game ending
 A game ends when both players pass consecutively
@@ -90,16 +103,16 @@ Reward methods are in _black_'s perspective
     * `0` - Game is tied
     * `1` - Black won
   * `0` - Otherwise
-* **Heuristic**: If the game is ongoing, the reward is `black area - white area`. 
-If black won, the reward is `BOARD_SIZE**2`. 
+* **Heuristic**: If the game is ongoing, the reward is `black area - white area`.
+If black won, the reward is `BOARD_SIZE**2`.
 If white won, the reward is `-BOARD_SIZE**2`.
 If tied, the reward is `0`.
 
 # State
-The `state` object that is returned by the `reset` and `step` functions of the environment is a 
-`6 x BOARD_SIZE x BOARD_SIZE` numpy array. All values in the array are either `0` or `1` 
+The `state` object that is returned by the `reset` and `step` functions of the environment is a
+`6 x BOARD_SIZE x BOARD_SIZE` numpy array. All values in the array are either `0` or `1`
 * **First and second channel:** represent the black and white pieces respectively.
-* **Third channel:** Indicator layer for whose turn it is 
+* **Third channel:** Indicator layer for whose turn it is
 * **Fourth channel:** Invalid moves (including ko-protection) for the next action
 * **Fifth channel:** Indicator layer for whether the previous move was a pass
 * **Sixth channel:** Indicator layer for whether the game is over
