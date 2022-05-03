@@ -21,8 +21,9 @@ class GoEnv(gym.Env):
     govars = govars
     gogame = gogame
 
-    def __init__(self, size, komi=0, reward_method='real'):
+    def __init__(self, size, komi=0, super_ko=False, reward_method='real'):
         '''
+        @param super_ko: whether to enable super-ko rule (history tracking)
         @param reward_method: either 'heuristic' or 'real'
         heuristic: gives # black pieces - # white pieces.
         real: gives 0 for in-game move, 1 for winning, -1 for losing,
@@ -31,7 +32,7 @@ class GoEnv(gym.Env):
         self.size = size
         self.komi = komi
         self.state_ = gogame.init_state(size)
-        self.history = []
+        self.history = [] if super_ko else None
         self.reward_method = RewardMethod(reward_method)
         self.observation_space = gym.spaces.Box(np.float32(0), np.float32(govars.NUM_CHNLS),
                                                 shape=(govars.NUM_CHNLS, size, size))
@@ -44,7 +45,8 @@ class GoEnv(gym.Env):
         done, return state
         '''
         self.state_ = gogame.init_state(self.size)
-        self.history = []
+        if self.history is not None:
+            self.history = []
         self.done = False
         return np.copy(self.state_)
 
@@ -63,7 +65,8 @@ class GoEnv(gym.Env):
 
         self.old_state = self.state()
         self.state_ = gogame.next_state(self.state_, action, canonical=False, history=self.history)
-        self.history.append(self.old_state)
+        if self.history is not None:
+            self.history.append(self.old_state)
         self.done = gogame.game_ended(self.state_)
         return np.copy(self.state_), self.reward(), self.done, self.info()
 
